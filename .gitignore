@@ -1,3 +1,4 @@
 .vscode
 *.ply
 !/tests/*.ply
+__pycache__/
