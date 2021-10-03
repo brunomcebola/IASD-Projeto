@@ -39,7 +39,7 @@ class registration_iasd(registration):
                 Values are a dictionaries with 'point_in_pc_1', 'point_in_pc_2' identifying the pair of points in the correspondence.
         :rtype: dict
         """
-
+        print("boa")
         correspondencies = {}
 
         for s1_p in range(self.scan_1.shape[0]):
@@ -57,7 +57,7 @@ class registration_iasd(registration):
                 if dist < correspondencies[str(s1_p)]["dist2"]:
                     correspondencies[str(s1_p)]["dist2"] = dist
                     correspondencies[str(s1_p)]["point_in_pc_2"] = self.scan_2[s2_p]
-
+        print(correspondencies)
         return correspondencies
 
 
@@ -108,5 +108,4 @@ class point_cloud_data_iasd(point_cloud_data):
                 line = fp.readline().split()
                 point_list = [float(line[point_order[0]]),float(line[point_order[1]]),float(line[point_order[2]])]
                 self.data[str(i)] = np.array(point_list)
-        fp.close()
         return True
