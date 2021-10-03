@@ -68,5 +68,42 @@ class point_cloud_data_iasd(point_cloud_data):
         the ply was OK or not
         :rtype: bool
         """
-        
-        pass
+
+        with open(file, "r") as fp:
+            point_order = list()
+            while True:
+                line = fp.readline().split()
+            
+                if line[0]=="element":
+                    if line[1]=="vertex":
+                        n_vertex = int(line[2])
+                    # elif line[1] == "face":
+                    #     n_face = int(line[2])
+                elif line[0] == "property" and line[1]=="float":
+                    if line[2] == "x":
+                        point_order.append("x")
+                    if line[2] == "y":
+                        point_order.append("y")
+                    if line[2] == "z":
+                        point_order.append("z")
+                        
+                if line[0] == "end_header":
+                    break
+            
+            for i in range(n_vertex):
+                line = fp.readline().split()
+                
+                point_list = ["","",""]
+
+                point_list[0] = line[point_order.index("x")]
+                point_list[1] = line[point_order.index("y")]
+                point_list[2] = line[point_order.index("z")]
+
+                
+                
+                point = np.array(point_list)
+                self.data[str(i)] = point
+
+        print(self.data)
+
+        return True
