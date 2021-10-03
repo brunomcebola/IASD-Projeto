@@ -124,40 +124,31 @@ class point_cloud_data_iasd(point_cloud_data):
         """
 
         with open(file, "r") as fp:
-            point_order = []
+            point_order = [None, None, None]
+            counter = 0
             while True:
                 line = fp.readline().split()
 
                 if line[0] == "element":
                     if line[1] == "vertex":
                         n_vertex = int(line[2])
-                elif line[0] == "property" and line[1] == "float":
+                elif line[0] == "property" :
                     if line[2] == "x":
-                        point_order.append("x")
-                    if line[2] == "y":
-                        point_order.append("y")
-                    if line[2] == "z":
-                        point_order.append("z")
-
+                        point_order[0] = counter
+                    elif line[2] == "y":
+                        point_order[1] = counter
+                    elif line[2] == "z":
+                        point_order[2] = counter
+                    counter +=1
                 if line[0] == "end_header":
                     break
 
-            if len(point_order) != 3:
+            if None in point_order:
                 return False
 
             for i in range(n_vertex):
                 line = fp.readline().split()
-
-                # point_list = ["","",""]
-                # #[x, z, y]
-                # point_list[0] = line[ point_order.index("x") ]
-                # point_list[1] = line[point_order.index("y")]
-                # point_list[2] = line[point_order.index("z")]
-
-                point_list = [
-                    float(line[point_order.index(j)]) for j in ["x", "y", "z"]
-                ]
-
+                point_list = [float(line[point_order[0]]),float(line[point_order[1]]),float(line[point_order[2]])]
                 self.data[str(i)] = np.array(point_list)
-
+        fp.close()
         return True
