@@ -24,7 +24,47 @@ class registration_iasd(registration):
         :rtype: Tuple[np.array, np.array]
         """
 
-        pass
+        s1_center = np.zeros(3)
+        s2_center = np.zeros(3)
+
+        s1_stack = [np.zeros(3)]
+        s2_stack = [np.zeros(3)]
+
+        for key in correspondences:
+            s1_center = np.add(s1_center, correspondences[key]["point_in_pc_1"])
+            s2_center = np.add(s2_center, correspondences[key]["point_in_pc_2"])
+
+            s1_stack = np.insert(
+                s1_stack, 0, correspondences[key]["point_in_pc_1"], axis=0
+            )
+            s2_stack = np.insert(
+                s2_stack, 0, correspondences[key]["point_in_pc_2"], axis=0
+            )
+
+        s1_stack = np.array(s1_stack[:-1])
+        s2_stack = np.array(s2_stack[:-1])
+
+        s1_center = s1_center / len(correspondences)
+        s2_center = s2_center / len(correspondences)
+
+        A = np.matmul(np.transpose(s2_stack), s1_stack)
+
+        U, S, V = np.linalg.svd(A)
+
+        # check below for possible optimizations
+
+        det = np.linalg.det(np.matmul(U, np.transpose(V)))
+
+        diag = np.array([[1, 0, 0], [0, 1, 0], [0, 0, det]])
+
+        R_out = np.matmul(
+            np.matmul(U, diag),
+            np.transpose(V),
+        )
+
+        T_out = s2_center - np.matmul(R_out, s1_center)
+
+        return (R_out, T_out)
 
     def find_closest_points(self) -> dict:
         """Computes the closest points in the two scans.
@@ -42,21 +82,23 @@ class registration_iasd(registration):
 
         correspondencies = {}
 
-        for s1_p in range(self.scan_1.shape[0]):
-            correspondencies[str(s1_p)] = {}
-            correspondencies[str(s1_p)]["point_in_pc_1"] = self.scan_1[s1_p]
-            correspondencies[str(s1_p)]["dist2"] = inf
+        for s1_p_index in range(self.scan_1.shape[0]):
+            correspondencies[str(s1_p_index)] = {}
+            correspondencies[str(s1_p_index)]["point_in_pc_1"] = self.scan_1[s1_p_index]
+            correspondencies[str(s1_p_index)]["dist2"] = inf
 
-            for s2_p in range(self.scan_2.shape[0]):
+            for s2_p_index in range(self.scan_2.shape[0]):
                 dist = sqrt(
-                    (self.scan_1[s1_p, 0] - self.scan_2[s2_p, 0]) ** 2
-                    + (self.scan_1[s1_p, 1] - self.scan_2[s2_p, 1]) ** 2
-                    + (self.scan_1[s1_p, 2] - self.scan_2[s2_p, 2]) ** 2
+                    (self.scan_1[s1_p_index, 0] - self.scan_2[s2_p_index, 0]) ** 2
+                    + (self.scan_1[s1_p_index, 1] - self.scan_2[s2_p_index, 1]) ** 2
+                    + (self.scan_1[s1_p_index, 2] - self.scan_2[s2_p_index, 2]) ** 2
                 )
 
-                if dist < correspondencies[str(s1_p)]["dist2"]:
-                    correspondencies[str(s1_p)]["dist2"] = dist
-                    correspondencies[str(s1_p)]["point_in_pc_2"] = self.scan_2[s2_p]
+                if dist < correspondencies[str(s1_p_index)]["dist2"]:
+                    correspondencies[str(s1_p_index)]["dist2"] = dist
+                    correspondencies[str(s1_p_index)]["point_in_pc_2"] = self.scan_2[
+                        s2_p_index
+                    ]
 
         return correspondencies
 
