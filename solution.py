@@ -30,22 +30,25 @@ class registration_iasd(registration):
         s1_stack = [np.zeros(3)]
         s2_stack = [np.zeros(3)]
 
-        for key in correspondences:
-            s1_center = np.add(s1_center, correspondences[key]["point_in_pc_1"])
-            s2_center = np.add(s2_center, correspondences[key]["point_in_pc_2"])
+        for s1_p in self.scan_1:
+            s1_center = np.add(s1_center, s1_p)
 
+        for s2_p in self.scan_2:
+            s2_center = np.add(s2_center, s2_p)
+
+        s1_center = s1_center / len(self.scan_1)
+        s2_center = s2_center / len(self.scan_2)
+
+        for key in correspondences:
             s1_stack = np.insert(
-                s1_stack, 0, correspondences[key]["point_in_pc_1"], axis=0
+                s1_stack, 0, correspondences[key]["point_in_pc_1"] - s1_center, axis=0
             )
             s2_stack = np.insert(
-                s2_stack, 0, correspondences[key]["point_in_pc_2"], axis=0
+                s2_stack, 0, correspondences[key]["point_in_pc_2"] - s2_center, axis=0
             )
 
         s1_stack = np.array(s1_stack[:-1])
         s2_stack = np.array(s2_stack[:-1])
-
-        s1_center = s1_center / len(correspondences)
-        s2_center = s2_center / len(correspondences)
 
         A = np.matmul(np.transpose(s2_stack), s1_stack)
 
@@ -83,9 +86,9 @@ class registration_iasd(registration):
         correspondencies = {}
 
         for s1_p_index in range(self.scan_1.shape[0]):
-            correspondencies[str(s1_p_index)] = {}
-            correspondencies[str(s1_p_index)]["point_in_pc_1"] = self.scan_1[s1_p_index]
-            correspondencies[str(s1_p_index)]["dist2"] = inf
+            correspondencies[s1_p_index] = {}
+            correspondencies[s1_p_index]["point_in_pc_1"] = self.scan_1[s1_p_index]
+            correspondencies[s1_p_index]["dist2"] = inf
 
             for s2_p_index in range(self.scan_2.shape[0]):
                 dist = sqrt(
@@ -94,9 +97,9 @@ class registration_iasd(registration):
                     + (self.scan_1[s1_p_index, 2] - self.scan_2[s2_p_index, 2]) ** 2
                 )
 
-                if dist < correspondencies[str(s1_p_index)]["dist2"]:
-                    correspondencies[str(s1_p_index)]["dist2"] = dist
-                    correspondencies[str(s1_p_index)]["point_in_pc_2"] = self.scan_2[
+                if dist < correspondencies[s1_p_index]["dist2"]:
+                    correspondencies[s1_p_index]["dist2"] = dist
+                    correspondencies[s1_p_index]["point_in_pc_2"] = self.scan_2[
                         s2_p_index
                     ]
 
@@ -132,15 +135,15 @@ class point_cloud_data_iasd(point_cloud_data):
                 if line[0] == "element":
                     if line[1] == "vertex":
                         n_vertex = int(line[2])
-                elif line[0] == "property" :
+                elif line[0] == "property":
                     if line[2] == "x":
                         point_order[0] = counter
                     elif line[2] == "y":
                         point_order[1] = counter
                     elif line[2] == "z":
                         point_order[2] = counter
-                    counter +=1
-                if line[0] == "end_header":
+                    counter += 1
+                elif line[0] == "end_header":
                     break
 
             if None in point_order:
@@ -148,7 +151,11 @@ class point_cloud_data_iasd(point_cloud_data):
 
             for i in range(n_vertex):
                 line = fp.readline().split()
-                point_list = [float(line[point_order[0]]),float(line[point_order[1]]),float(line[point_order[2]])]
+                point_list = [
+                    float(line[point_order[0]]),
+                    float(line[point_order[1]]),
+                    float(line[point_order[2]]),
+                ]
                 self.data[str(i)] = np.array(point_list)
         fp.close()
         return True

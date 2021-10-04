@@ -59,9 +59,9 @@ def main(arguments):
     # The load_solution function will load the data and
     # gt from the respective files.
     PROBLEMS ={
-        'PUB1': ('tests/test_nr1', 100),
+        'PUB1': ('tests/test_nr1', 5),
         'PUB2': ('tests/test_nr2', 5),
-        'PUB3': ('tests/test_nr3', 15),
+        'PUB3': ('tests/test_nr3', 10),
         'PUB4': ('tests/test_nr4', 10),
         'PUB5': ('tests/test_nr5', 10),
         'PUB6': ('tests/test_nr6', 25),
