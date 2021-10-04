@@ -56,13 +56,13 @@ class registration_iasd(registration):
 
         # check below for possible optimizations
 
-        det = np.linalg.det(np.matmul(U, np.transpose(V)))
+        det = np.linalg.det(np.matmul(U, V))
 
         diag = np.array([[1, 0, 0], [0, 1, 0], [0, 0, det]])
 
         R_out = np.matmul(
             np.matmul(U, diag),
-            np.transpose(V),
+            V,
         )
 
         T_out = s2_center - np.matmul(R_out, s1_center)
