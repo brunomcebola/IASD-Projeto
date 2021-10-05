@@ -28,6 +28,9 @@ class point_cloud_data:
         # load the point cloud from the ply file
         self.succ = self.load_point_cloud(fileName)
 
+        if not self.succ:
+            print("ERROR in ply file")
+
         return
 
 

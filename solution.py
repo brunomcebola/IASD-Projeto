@@ -30,23 +30,24 @@ class registration_iasd(registration):
         s1_stack = [np.zeros(3)]
         s2_stack = [np.zeros(3)]
 
-        for s1_p in self.scan_1:
-            s1_center = np.add(s1_center, s1_p)
+        # for s1_p in self.scan_1:
+        #     s1_center = np.add(s1_center, s1_p)
 
-        for s2_p in self.scan_2:
-            s2_center = np.add(s2_center, s2_p)
+        # for s2_p in self.scan_2:
+        #     s2_center = np.add(s2_center, s2_p)
 
-        s1_center = s1_center / len(self.scan_1)
-        s2_center = s2_center / len(self.scan_2)
+        # s1_center = s1_center / len(self.scan_1)
+        # s2_center = s2_center / len(self.scan_2)
 
+        #Does the same as previous lines
+        s1_center = np.mean(self.scan_1, axis=0)
+        s2_center = np.mean(self.scan_2, axis=0)
+        
         for key in correspondences:
-            s1_stack = np.insert(
-                s1_stack, 0, correspondences[key]["point_in_pc_1"] - s1_center, axis=0
-            )
-            s2_stack = np.insert(
-                s2_stack, 0, correspondences[key]["point_in_pc_2"] - s2_center, axis=0
-            )
-
+            s1_stack = np.insert( s1_stack, 0, correspondences[key]["point_in_pc_1"] - s1_center, axis=0 )
+            s2_stack = np.insert( s2_stack, 0, correspondences[key]["point_in_pc_2"] - s2_center, axis=0 )
+        
+        #Removing the last element (its zeros)
         s1_stack = np.array(s1_stack[:-1])
         s2_stack = np.array(s2_stack[:-1])
 
@@ -55,6 +56,8 @@ class registration_iasd(registration):
         U, S, V = np.linalg.svd(A)
 
         # check below for possible optimizations
+
+        # (we cant change the algorithm)
 
         det = np.linalg.det(np.matmul(U, V))
 
@@ -82,7 +85,6 @@ class registration_iasd(registration):
                 Values are a dictionaries with 'point_in_pc_1', 'point_in_pc_2' identifying the pair of points in the correspondence.
         :rtype: dict
         """
-        print("boa")
         correspondencies = {}
 
         for s1_p_index in range(self.scan_1.shape[0]):
