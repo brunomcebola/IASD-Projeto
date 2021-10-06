@@ -27,36 +27,21 @@ class registration_iasd(registration):
         s1_center = np.zeros(3)
         s2_center = np.zeros(3)
 
-        s1_stack = [np.zeros(3)]
-        s2_stack = [np.zeros(3)]
-
-        # for s1_p in self.scan_1:
-        #     s1_center = np.add(s1_center, s1_p)
-
-        # for s2_p in self.scan_2:
-        #     s2_center = np.add(s2_center, s2_p)
-
-        # s1_center = s1_center / len(self.scan_1)
-        # s2_center = s2_center / len(self.scan_2)
-
-        #Does the same as previous lines
         s1_center = np.mean(self.scan_1, axis=0)
         s2_center = np.mean(self.scan_2, axis=0)
-        
+
+        s1_stack = []
+        s2_stack = []
+
         for key in correspondences:
-            s1_stack = np.insert( s1_stack, 0, correspondences[key]["point_in_pc_1"] - s1_center, axis=0 )
-            s2_stack = np.insert( s2_stack, 0, correspondences[key]["point_in_pc_2"] - s2_center, axis=0 )
-        
-        #Removing the last element (its zeros)
-        s1_stack = np.array(s1_stack[:-1])
-        s2_stack = np.array(s2_stack[:-1])
+            s1_stack.append(correspondences[key]["point_in_pc_1"] - s1_center)
+            s2_stack.append(correspondences[key]["point_in_pc_2"] - s2_center)
 
         A = np.matmul(np.transpose(s2_stack), s1_stack)
 
         U, S, V = np.linalg.svd(A)
 
         # check below for possible optimizations
-
         # (we cant change the algorithm)
 
         det = np.linalg.det(np.matmul(U, V))
@@ -90,20 +75,14 @@ class registration_iasd(registration):
         for s1_p_index in range(self.scan_1.shape[0]):
             correspondencies[s1_p_index] = {}
             correspondencies[s1_p_index]["point_in_pc_1"] = self.scan_1[s1_p_index]
-            correspondencies[s1_p_index]["dist2"] = inf
-
-            for s2_p_index in range(self.scan_2.shape[0]):
-                dist = sqrt(
-                    (self.scan_1[s1_p_index, 0] - self.scan_2[s2_p_index, 0]) ** 2
-                    + (self.scan_1[s1_p_index, 1] - self.scan_2[s2_p_index, 1]) ** 2
-                    + (self.scan_1[s1_p_index, 2] - self.scan_2[s2_p_index, 2]) ** 2
-                )
-
-                if dist < correspondencies[s1_p_index]["dist2"]:
-                    correspondencies[s1_p_index]["dist2"] = dist
-                    correspondencies[s1_p_index]["point_in_pc_2"] = self.scan_2[
-                        s2_p_index
-                    ]
+            
+            aux_matrix = (self.scan_2 - self.scan_1[s1_p_index])**2
+            square_dists = aux_matrix.sum(axis=1)
+            min_index = np.argmin(square_dists)
+            correspondencies[s1_p_index]["point_in_pc_2"] = self.scan_2[min_index]
+            
+            # not using sqrt in order to meet the stopping condition
+            correspondencies[s1_p_index]["dist2"] = square_dists[min_index]
 
         return correspondencies
 
