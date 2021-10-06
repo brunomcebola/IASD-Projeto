@@ -135,6 +135,9 @@ class point_cloud_data_iasd(point_cloud_data):
                 #if there's less properties found than the ones mentioned
                 if len(line) != counter:
                     return False
+                #it reached end of file before expected
+                elif line == 0:
+                    return False
                 point_list = [
                     float(line[point_order[0]]),
                     float(line[point_order[1]]),
