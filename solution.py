@@ -132,6 +132,9 @@ class point_cloud_data_iasd(point_cloud_data):
 
             for i in range(n_vertex):
                 line = fp.readline().split()
+                #if there's less properties found than the ones mentioned
+                if len(line) != counter:
+                    return False
                 point_list = [
                     float(line[point_order[0]]),
                     float(line[point_order[1]]),
