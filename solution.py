@@ -5,7 +5,6 @@ from math import sqrt, inf
 import numpy as np
 from typing import Tuple
 
-
 class registration_iasd(registration):
     def __init__(self, scan_1: np.array((..., 3)), scan_2: np.array((..., 3))) -> None:
 
@@ -24,23 +23,12 @@ class registration_iasd(registration):
         :rtype: Tuple[np.array, np.array]
         """
 
-        s1_center = np.zeros(3)
-        s2_center = np.zeros(3)
+        #iterate through the correspondesces values (for both points)        
+        s1 = np.array( [value['point_in_pc_1'] for value in correspondences.values()] )
+        s1_center = np.average( s1, axis=0 )
 
-        #iterate through the correspondesces values
-        s=np.zeros(3)
-        for value in correspondences.values():
-            s = np.add(s, value['point_in_pc_1'])
-        s1_center = s/len(correspondences)
-
-        #same thing for the other points
-        s=np.zeros(3)
-        for value in correspondences.values():
-            s = np.add(s, value['point_in_pc_2'])
-        s2_center = s/len(correspondences)
-
-        # s1_center = np.mean(self.scan_1, axis=0)
-        # s2_center = np.mean(self.scan_2, axis=0)
+        s2 = np.array( [value['point_in_pc_2'] for value in correspondences.values()] )
+        s2_center = np.average( s2, axis=0 )
 
         s1_stack = []
         s2_stack = []
