@@ -72,17 +72,24 @@ class registration_iasd(registration):
         """
         correspondencies = {}
 
-        for s1_p_index in range(self.scan_1.shape[0]):
-            correspondencies[s1_p_index] = {}
-            correspondencies[s1_p_index]["point_in_pc_1"] = self.scan_1[s1_p_index]
+        for (index, element) in enumerate(self.scan_1):
+            correspondencies[index] = {}
+            correspondencies[index]["point_in_pc_1"] = element
+
+            #compute the distance of each point of scan2 to to the current element of scan1
+            norma = (self.scan_2 - element)**2
+            norma = norma.sum(axis=1)
+
+            #find where the min distance is
+            min_idx = np.argmin(norma)
             
-            aux_matrix = (self.scan_2 - self.scan_1[s1_p_index])**2
-            square_dists = aux_matrix.sum(axis=1)
-            min_index = np.argmin(square_dists)
-            correspondencies[s1_p_index]["point_in_pc_2"] = self.scan_2[min_index]
-            
-            # not using sqrt in order to meet the stopping condition
-            correspondencies[s1_p_index]["dist2"] = square_dists[min_index]
+            norma = sqrt(norma[min_idx])
+
+            #save the point that has the min distance
+            correspondencies[index]["point_in_pc_2"] = self.scan_2[min_idx]
+
+            #and save the actual distance
+            correspondencies[index]["dist2"] = norma
 
         return correspondencies
 
@@ -116,12 +123,18 @@ class point_cloud_data_iasd(point_cloud_data):
                 if line[0] == "element":
                     if line[1] == "vertex":
                         n_vertex = int(line[2])
-                elif line[0] == "property":
+                elif line[0] == "property" and line[1] == "float":
                     if line[2] == "x":
+                        if point_order[0] != None:
+                            return False
                         point_order[0] = counter
                     elif line[2] == "y":
+                        if point_order[1] != None:
+                            return False
                         point_order[1] = counter
                     elif line[2] == "z":
+                        if point_order[2] != None:
+                            return False
                         point_order[2] = counter
                     counter += 1
                 elif line[0] == "end_header":
