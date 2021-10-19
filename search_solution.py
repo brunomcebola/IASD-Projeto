@@ -1,4 +1,5 @@
 from typing import Tuple
+import numpy as np
 from numpy import array
 import search
 
@@ -34,7 +35,8 @@ class align_3d_search_problem(search.Problem):
         # Creates an initial state.
         # You may want to change this to something representing
         # your initial state.
-        self.initial = None 
+        self.initial = scan1
+        self.goal = scan2 
 
         return
 
