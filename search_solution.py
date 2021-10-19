@@ -13,16 +13,12 @@ Action = None
 
 # Choose what you think it is the best data structure
 # for representing states.
-State = None
+State = np.array( (...,3) )
 
 
 class align_3d_search_problem(search.Problem):
 
-    def __init__(
-            self,
-            scan1: array((...,3)),
-            scan2: array((...,3)),
-            ) -> None:
+    def __init__(self, scan1: array((...,3)), scan2: array((...,3))) -> None:
         """Module that instantiate your class.
         You CAN change the content of this __init__ if you want.
 
@@ -92,8 +88,22 @@ class align_3d_search_problem(search.Problem):
         :return: returns true or false, whether it represents a node state or not
         :rtype: bool
         """
+
+        registration = registration_iasd(state, self.goal)
         
-        pass
+        correspondencies = registration.find_closest_points()
+
+        dists = []
+
+        for element in correspondencies.values():
+            
+            dists.append(element['dist2'])
+        
+        dists = np.array(dists)
+
+        avg_dist = np.average(dists)
+        
+        return (avg_dist < 1E-16)
 
 
     def path_cost(
@@ -144,4 +154,19 @@ def compute_alignment(
     :rtype: Tuple[bool, array, array, int]
     """
     
-    pass
+    #find the center of each cloud
+    cloud1_center = np.average(scan1, axis=0)
+    cloud2_center = np.average(scan2, axis=0)
+
+    dist = cloud2_center - cloud1_center
+
+    #Move center of scan1 to center of scan2
+    scan1 = scan1 + dist
+
+    align_problem = align_3d_search_problem(scan1, scan2)
+    
+    ret = align_problem.goal_test(scan1)
+    
+    # search.depth_first_tree_search(align_problem)
+
+    return (ret, np.eye(3), dist, 2)
