@@ -31,8 +31,14 @@ class align_3d_search_problem(search.Problem):
         # Creates an initial state.
         # You may want to change this to something representing
         # your initial state.
-        self.initial = scan1
-        self.goal = scan2 
+        
+        #sets the goal to the scan with bigger number of points
+        if len(scan1) > len(scan2):
+            self.initial = scan2
+            self.goal = scan1
+        else:
+            self.initial = scan1
+            self.goal = scan2
 
         return
 
