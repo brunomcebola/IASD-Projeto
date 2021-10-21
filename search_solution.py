@@ -3,18 +3,24 @@ import numpy as np
 from numpy import array
 import search
 
+import time
+
 # you can want to use the class registration_iasd
 # from your solution.py (from previous assignment)
 from solution import registration_iasd
 
 # Choose what you think it is the best data structure
 # for representing actions.
-Action = None
+Action = float
 
 # Choose what you think it is the best data structure
 # for representing states.
-State = np.array( (...,3) )
+class myState():
+    def __init__(self, actualState: float, prevAction: float) -> None:
+        self.actualState = actualState
+        self.prevAction = prevAction
 
+State = myState
 
 class align_3d_search_problem(search.Problem):
 
@@ -31,15 +37,26 @@ class align_3d_search_problem(search.Problem):
         # Creates an initial state.
         # You may want to change this to something representing
         # your initial state.
-        
-        #sets the goal to the scan with bigger number of points
-        if len(scan1) > len(scan2):
-            self.initial = scan2
-            self.goal = scan1
-        else:
-            self.initial = scan1
-            self.goal = scan2
+                      
+        # registration = registration_iasd(scan1, scan2)
+        # correspondencies = registration.find_closest_points()
+        # dists = []
+        # for element in correspondencies.values():
+        #     dists.append(element['dist2'])
 
+        # avg_dist = np.average(np.array(dists))
+        
+        # print(avg_dist)
+        
+        # self.initial["scan1"] = scan1
+        # self.initial["scan2"] = scan2
+        # self.initial["dist"] = np.average( np.array(dists) )
+
+        self.initial = myState(0, 0)
+        self.scan1 = scan1
+        self.goal = scan2
+        self.center = np.average(scan1, axis=0)
+        
         return
 
 
@@ -56,9 +73,18 @@ class align_3d_search_problem(search.Problem):
         :return: Tuple with all possible actions
         :rtype: Tuple
         """
+        
+        action = []
+        if state.actualState == 0 and state.prevAction == 0:
+            action.append( np.pi )
+            action.append( -np.pi )
+        else:
+            action.append( state.prevAction/2 )
+            action.append( -state.prevAction/2 )
 
-        pass
+        # action = [state.actualState + np.radians( 0.01 ), state.actualState + np.radians( 0.02 )]
 
+        return tuple(action)
 
     def result(
             self,
@@ -77,7 +103,11 @@ class align_3d_search_problem(search.Problem):
         :rtype: State
         """
         
-        pass
+        result = myState(state.actualState + action, action)
+        # result = state.actualState + action
+        # resultState = myAction(np.dot(action.getMatrix(), state.getMatrix()))
+
+        return result
 
 
     def goal_test(
@@ -94,22 +124,48 @@ class align_3d_search_problem(search.Problem):
         :return: returns true or false, whether it represents a node state or not
         :rtype: bool
         """
-
-        registration = registration_iasd(state, self.goal)
         
+        print(f"Im testing if this is goal: rotation of {np.degrees(state.actualState)} degrees")
+        
+        # R = angleToMatrix(state.actualState, state.actualState, state.actualState)
+        R = eulerAnglesToRotationMatrix([state.actualState, state.actualState, state.actualState])
+
+        T = np.vstack( (np.column_stack( ( R, 
+            [self.center[0]-R[0][0]*self.center[0] - R[0][1]*self.center[1] - R[0][2]*self.center[2],
+            self.center[1]-R[1][0]*self.center[0] - R[1][1]*self.center[1] - R[1][2]*self.center[2],
+            self.center[2]-R[2][0]*self.center[0] - R[2][1]*self.center[1] - R[2][2]*self.center[2]]) ), 
+            [0,0,0,1] ) )
+        
+        #here we apply the rotation and translation to the actual points
+        r = T[0:3,0:3]
+        t = T[0:3, 3]
+        print("R:")
+        print(r)
+        print("T:")
+        print(t)
+
+        num_points, _ = self.scan1.shape
+        transformedScan = (
+                        np.dot(r, self.scan1.T) +
+                        np.dot(t.reshape((3,1)),np.ones((1,num_points)))
+                        ).T
+                
+        registration = registration_iasd(transformedScan, self.goal)
         correspondencies = registration.find_closest_points()
+        # dists = []
+        # for element in correspondencies.values():
+        #     dists.append(element['dist2'])
 
-        dists = []
-
-        for element in correspondencies.values():
-            
-            dists.append(element['dist2'])
+        # avg_dist = np.average( np.array(dists) )
         
-        dists = np.array(dists)
+        # print(avg_dist)
 
-        avg_dist = np.average(dists)
+        error = sum(correspondence['dist2']**2 for correspondence in correspondencies.values())
+        # if error <0.1:
+        print(error)
+        time.sleep(1)
         
-        return (avg_dist < 1E-16)
+        return (error < 0.0001)#1E-16)
 
 
     def path_cost(
@@ -139,6 +195,55 @@ class align_3d_search_problem(search.Problem):
 
         pass
 
+import math
+# Calculates Rotation Matrix given euler angles.
+def eulerAnglesToRotationMatrix(theta) :
+
+    R_x = np.array([[1,         0,                  0                   ],
+                    [0,         math.cos(theta[0]), -math.sin(theta[0]) ],
+                    [0,         math.sin(theta[0]), math.cos(theta[0])  ]
+                    ])
+
+    R_y = np.array([[math.cos(theta[1]),    0,      math.sin(theta[1])  ],
+                    [0,                     1,      0                   ],
+                    [-math.sin(theta[1]),   0,      math.cos(theta[1])  ]
+                    ])
+
+    R_z = np.array([[math.cos(theta[2]),    -math.sin(theta[2]),    0],
+                    [math.sin(theta[2]),    math.cos(theta[2]),     0],
+                    [0,                     0,                      1]
+                    ])
+
+    R = np.dot(R_z, np.dot( R_y, R_x ))
+
+    return R
+
+#Converts the euler angles to a rotation matrix to be applied to the clouds
+def angleToMatrix(theta, phi, psi):
+    # Rz_phi = np.array([[1,0,0],
+    #                 [0, np.cos(phi), -np.sin(phi)],
+    #                 [0, np.sin(phi), np.cos(phi)]])
+
+    # Ry = np.array([[np.cos(theta),0,np.sin(theta)],
+    #                 [0, 1, 0],
+    #                 [-np.sin(theta), 0, np.cos(theta)]])
+
+    # Rz_psi = np.array([[1,0,0],
+    #                 [0, np.cos(psi), -np.sin(psi)],
+    #                 [0, np.sin(psi), np.cos(psi)]])
+
+    # print(np.linalg.det(Rz_phi),np.linalg.det(Ry),np.linalg.det(Rz_psi))
+
+    # R_mult = np.matmul(np.matmul(Rz_phi, Ry), Rz_psi)
+    # print(R_mult)
+    # print(np.linalg.det(R_mult))
+    
+    R = np.array([[np.cos(phi), np.sin(theta)*np.sin(psi), np.sin(theta)*np.cos(psi)],
+                [np.sin(theta)*np.sin(phi), np.cos(psi)*np.cos(phi)-np.cos(theta)*np.sin(psi)*np.sin(phi), 
+                        -np.cos(phi)*np.sin(psi)-np.cos(theta)*np.cos(psi)*np.sin(phi)],
+                [-np.sin(theta)*np.cos(phi), np.cos(psi)*np.sin(phi)+np.cos(theta)*np.cos(phi)*np.sin(psi),
+                        -np.sin(psi)*np.sin(phi)+np.cos(theta)*np.cos(psi)*np.cos(phi)]])
+    return R
 
 def compute_alignment(
         scan1: array((...,3)),
@@ -160,19 +265,70 @@ def compute_alignment(
     :rtype: Tuple[bool, array, array, int]
     """
     
-    #find the center of each cloud
+    # #find the center of each cloud
     cloud1_center = np.average(scan1, axis=0)
     cloud2_center = np.average(scan2, axis=0)
+
+    print(f"cloud1 center = {cloud1_center}\ncloud2 center = {cloud2_center}")
 
     dist = cloud2_center - cloud1_center
 
     #Move center of scan1 to center of scan2
     scan1 = scan1 + dist
 
+    # cloud1_center = np.average(scan1, axis=0)
+    # cloud2_center = np.average(scan2, axis=0)
+
+    # print(f"cloud1 center = {cloud1_center}\ncloud2 center = {cloud2_center}")
+
     align_problem = align_3d_search_problem(scan1, scan2)
     
-    ret = align_problem.goal_test(scan1)
-    
-    # search.depth_first_tree_search(align_problem)
+    # ret = align_problem.goal_test(scan1)
+    print("search")
+    ret = search.breadth_first_tree_search(align_problem)
+    print(ret.state)
 
-    return (ret, np.eye(3), dist, 2)
+    # R = angleToMatrix(-0.1,0,0)
+    # R = np.eye(3)
+
+    # R = angleToMatrix(0,0,np.pi)
+    # R = eulerAnglesToRotationMatrix([0,0,-np.pi/50])
+
+    # # R = matrix[0:3,0:3] #The rotation matrix
+    # T = np.array([0,0,0]) #translation
+    # num_points, _ = scan1.shape
+    # scan1 = (
+    #                 np.dot(R, scan1.T) +
+    #                 np.dot(T.reshape((3,1)),np.ones((1,num_points)))
+    #                 ).T
+
+    # cloud1_center = np.average(scan1, axis=0)
+    # cloud2_center = np.average(scan2, axis=0)
+
+    # print(f"cloud1 center = {cloud1_center}\ncloud2 center = {cloud2_center}")
+    
+    # R = eulerAnglesToRotationMatrix([np.pi/2, np.pi/2, np.pi/2])
+
+    # T = np.vstack( (np.column_stack( ( R, 
+    #     [cloud2_center[0]-R[0][0]*cloud2_center[0] - R[0][1]*cloud2_center[1] - R[0][2]*cloud2_center[2],
+    #     cloud2_center[1]-R[1][0]*cloud2_center[0] - R[1][1]*cloud2_center[1] - R[1][2]*cloud2_center[2],
+    #     cloud2_center[2]-R[2][0]*cloud2_center[0] - R[2][1]*cloud2_center[1] - R[2][2]*cloud2_center[2]]) ), 
+    #     [0,0,0,1] ) )
+
+    # #here we apply the rotation and translation to the actual points
+    # r = T[0:3,0:3]
+    # t = T[0:3, 3]
+    # R = np.array([[ 0.99998245, -0.0041712,   0.00420625],
+    # [ 0.00418874,  0.99998253, -0.0041712 ],
+    # [-0.00418878 , 0.00418874 , 0.99998245]])
+    # T = [-0.00032739,  0.00046003, -0.00013457]
+    
+    R=np.eye(3)
+    T=0
+    return (True, R, T, 1)
+
+if __name__ == "__main__":
+    R = angleToMatrix(0,0,np.pi)
+    R2 = eulerAnglesToRotationMatrix([0,0,np.pi])
+    print(np.linalg.det(R))
+    print(np.linalg.det(R2))

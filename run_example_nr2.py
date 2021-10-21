@@ -45,6 +45,10 @@ def run(name_test: str) -> None:
     _, _ = figure.make_point_cloud(np_point_cloud_1, point_weight=3, point_cloud_color=(0.1, 0.9, 0.1))
     id_pc1, _ = figure.make_point_cloud(np_point_cloud_1, point_weight=3, point_cloud_color=(0.9, 0.1, 0.1))
     _, _ = figure.make_point_cloud(np_point_cloud_2, point_weight=3, point_cloud_color=(0.1, 0.1, 0.9))
+    # figure.make_point_cloud(array([[0,0,0],[0,0,0]]), point_weight=5, point_cloud_color=(0,0,0))
+    # figure.make_point_cloud(array([[0.1,0,0],[0.1,0,0]]), point_weight=5, point_cloud_color=(1,0,0))#vermelho
+    # figure.make_point_cloud(array([[0,0.1,0],[0,0.1,0]]), point_weight=5, point_cloud_color=(1,1,1))#branco
+    # figure.make_point_cloud(array([[0,0,0.1],[0,0,0.1]]), point_weight=5, point_cloud_color=(1,1,0))#amarelo
 
     # creates the registration object
     tic = time()
@@ -88,14 +92,14 @@ def main(arguments):
     # The load_solution function will load th1e data and
     # gt from the respective files.
     PROBLEMS = {
-        'PUB1': ('test_nr1'),
-        'PUB2': ('test_nr2'),
-        'PUB3': ('test_nr3'),
-        'PUB4': ('test_nr4'),
-        'PUB5': ('test_nr5'),
-        'PUB6': ('test_nr6'),
-        'PUB7': ('test_nr7'),
-        'PUB8': ('test_nr8')
+        'PUB1': ('tests/test_nr1'),
+        'PUB2': ('tests/test_nr2'),
+        'PUB3': ('tests/test_nr3'),
+        'PUB4': ('tests/test_nr4'),
+        'PUB5': ('tests/test_nr5'),
+        'PUB6': ('tests/test_nr6'),
+        'PUB7': ('tests/test_nr7'),
+        'PUB8': ('tests/test_nr8')
     }
 
     if len(arguments) < 1:
