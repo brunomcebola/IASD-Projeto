@@ -76,24 +76,24 @@ class align_3d_search_problem(search.Problem):
         """
         
         action = []
-        if state.actualState == 0 and state.prevAction == 0:
-            action.append( ["x",np.radians( 1 )] )
+        if state.actualState == 0:
+            action.append( ["x",-np.radians( 1 )] )
             #action.append( ["x",-np.radians( 1 ) ] )
 
-            action.append( ["y",np.radians( 1 )] )
+            action.append( ["y",-np.radians( 1  )] )
             #action.append( ["y",-np.radians( 1 )] )
 
-            action.append( ["z",np.radians( 1 )] )
+            action.append( ["z", -np.radians( 1  )] )
             #action.append( ["z",-np.radians( 1 )] )
         else:
-            action.append( ["x" ,np.radians( 1 )] )
-            #action.append( ["x", state.prevAction - np.radians( 1 )] )
+            action.append( ["x" ,state.actualState - np.radians( 1  )] )
+            #action.append( ["x", state.actualState - np.radians( 1 )] )
 
-            action.append( ["y" ,np.radians( 1 )] )
-            #action.append( ["y",state.prevAction - np.radians( 1 )] )
+            action.append( ["y" ,state.actualState - np.radians( 1  )] )
+            #action.append( ["y",state.actualState - np.radians( 1 )] )
             
-            action.append( ["z" ,np.radians( 1 )] )
-            #action.append( ["z",state.prevAction - np.radians( 1 )] )
+            action.append( ["z" ,state.actualState - np.radians( 1  )] )
+            #action.append( ["z",state.actualState - np.radians( 1 )] )
 
         # action = [state.actualState + np.radians( 0.01 ), state.actualState + np.radians( 0.02 )]
 
@@ -117,7 +117,7 @@ class align_3d_search_problem(search.Problem):
         """
         #print(action)
         # R = angleToMatrix(state.actualState, state.actualState, state.actualState)
-        # print(action)
+        print(action)
         if action[0] == "x":
             R = eulerAnglesToRotationMatrix([action[1], 0, 0])
         elif action[0] == "y":
@@ -146,7 +146,7 @@ class align_3d_search_problem(search.Problem):
                         np.dot(t.reshape((3,1)),np.ones((1,num_points)))
                         ).T
         
-        result = myState(state.actualState + action[1],state.prevAction + action[1], transformedScan)
+        result = myState(action[1], state.actualState, transformedScan)
         # result = state.actualState + action
         # resultState = myAction(np.dot(action.getMatrix(), state.getMatrix()))
 
@@ -183,8 +183,8 @@ class align_3d_search_problem(search.Problem):
         # print(avg_dist)
 
         error = sum(correspondence['dist2']**2 for correspondence in correspondencies.values())
-        if error <0.001:
-            print(error)
+        # if error <0.001:
+        #print(error)
         #time.sleep(1)
         
         return (error < 0.0001)#1E-16)
