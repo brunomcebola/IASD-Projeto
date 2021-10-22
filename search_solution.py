@@ -16,9 +16,10 @@ Action = float
 # Choose what you think it is the best data structure
 # for representing states.
 class myState():
-    def __init__(self, actualState: float, prevAction: float) -> None:
+    def __init__(self, actualState: float, prevAction: float, transformedScan: array((...,3)) ) -> None:
         self.actualState = actualState
         self.prevAction = prevAction
+        self.transformedScan = transformedScan
 
 State = myState
 
@@ -52,7 +53,7 @@ class align_3d_search_problem(search.Problem):
         # self.initial["scan2"] = scan2
         # self.initial["dist"] = np.average( np.array(dists) )
 
-        self.initial = myState(0, 0)
+        self.initial = myState(0, 0, scan1)
         self.scan1 = scan1
         self.goal = scan2
         self.center = np.average(scan1, axis=0)
@@ -76,11 +77,23 @@ class align_3d_search_problem(search.Problem):
         
         action = []
         if state.actualState == 0 and state.prevAction == 0:
-            action.append( np.pi )
-            action.append( -np.pi )
+            action.append( ["x",np.radians( 1 )] )
+            #action.append( ["x",-np.radians( 1 ) ] )
+
+            action.append( ["y",np.radians( 1 )] )
+            #action.append( ["y",-np.radians( 1 )] )
+
+            action.append( ["z",np.radians( 1 )] )
+            #action.append( ["z",-np.radians( 1 )] )
         else:
-            action.append( state.prevAction/2 )
-            action.append( -state.prevAction/2 )
+            action.append( ["x" ,np.radians( 1 )] )
+            #action.append( ["x", state.prevAction - np.radians( 1 )] )
+
+            action.append( ["y" ,np.radians( 1 )] )
+            #action.append( ["y",state.prevAction - np.radians( 1 )] )
+            
+            action.append( ["z" ,np.radians( 1 )] )
+            #action.append( ["z",state.prevAction - np.radians( 1 )] )
 
         # action = [state.actualState + np.radians( 0.01 ), state.actualState + np.radians( 0.02 )]
 
@@ -102,8 +115,38 @@ class align_3d_search_problem(search.Problem):
         :return: A new state
         :rtype: State
         """
+        #print(action)
+        # R = angleToMatrix(state.actualState, state.actualState, state.actualState)
+        # print(action)
+        if action[0] == "x":
+            R = eulerAnglesToRotationMatrix([action[1], 0, 0])
+        elif action[0] == "y":
+            R = eulerAnglesToRotationMatrix([0, action[1], 0])
+        elif action[0] == "z":
+            R = eulerAnglesToRotationMatrix([0, 0, action[1]]) 
         
-        result = myState(state.actualState + action, action)
+
+        T = np.vstack( (np.column_stack( ( R, 
+            [self.center[0]-R[0][0]*self.center[0] - R[0][1]*self.center[1] - R[0][2]*self.center[2],
+            self.center[1]-R[1][0]*self.center[0] - R[1][1]*self.center[1] - R[1][2]*self.center[2],
+            self.center[2]-R[2][0]*self.center[0] - R[2][1]*self.center[1] - R[2][2]*self.center[2]]) ), 
+            [0,0,0,1] ) )
+        
+        #here we apply the rotation and translation to the actual points
+        r = T[0:3,0:3]
+        t = T[0:3, 3]
+        #print("R:")
+        #print(r)
+        #print("T:")
+        #print(t)
+
+        num_points, _ = self.scan1.shape
+        transformedScan = (
+                        np.dot(r, self.scan1.T) +
+                        np.dot(t.reshape((3,1)),np.ones((1,num_points)))
+                        ).T
+        
+        result = myState(state.actualState + action[1],state.prevAction + action[1], transformedScan)
         # result = state.actualState + action
         # resultState = myAction(np.dot(action.getMatrix(), state.getMatrix()))
 
@@ -125,32 +168,11 @@ class align_3d_search_problem(search.Problem):
         :rtype: bool
         """
         
-        print(f"Im testing if this is goal: rotation of {np.degrees(state.actualState)} degrees")
+        # print(f"Im testing if this is goal: rotation of {np.degrees(state.actualState)} degrees")
         
-        # R = angleToMatrix(state.actualState, state.actualState, state.actualState)
-        R = eulerAnglesToRotationMatrix([state.actualState, state.actualState, state.actualState])
-
-        T = np.vstack( (np.column_stack( ( R, 
-            [self.center[0]-R[0][0]*self.center[0] - R[0][1]*self.center[1] - R[0][2]*self.center[2],
-            self.center[1]-R[1][0]*self.center[0] - R[1][1]*self.center[1] - R[1][2]*self.center[2],
-            self.center[2]-R[2][0]*self.center[0] - R[2][1]*self.center[1] - R[2][2]*self.center[2]]) ), 
-            [0,0,0,1] ) )
         
-        #here we apply the rotation and translation to the actual points
-        r = T[0:3,0:3]
-        t = T[0:3, 3]
-        print("R:")
-        print(r)
-        print("T:")
-        print(t)
-
-        num_points, _ = self.scan1.shape
-        transformedScan = (
-                        np.dot(r, self.scan1.T) +
-                        np.dot(t.reshape((3,1)),np.ones((1,num_points)))
-                        ).T
                 
-        registration = registration_iasd(transformedScan, self.goal)
+        registration = registration_iasd(state.transformedScan, self.goal)
         correspondencies = registration.find_closest_points()
         # dists = []
         # for element in correspondencies.values():
@@ -161,9 +183,9 @@ class align_3d_search_problem(search.Problem):
         # print(avg_dist)
 
         error = sum(correspondence['dist2']**2 for correspondence in correspondencies.values())
-        # if error <0.1:
-        print(error)
-        time.sleep(1)
+        if error <0.001:
+            print(error)
+        #time.sleep(1)
         
         return (error < 0.0001)#1E-16)
 
