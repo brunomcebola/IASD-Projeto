@@ -8,15 +8,11 @@ import time
 # you can want to use the class registration_iasd
 # from your solution.py (from previous assignment)
 from solution import registration_iasd
-
 #
 #
 from mpl_toolkits import mplot3d
 import numpy as np
 import matplotlib.pyplot as plt
-
-#
-#
 
 # Choose what you think it is the best data structure
 # for representing actions.
@@ -25,15 +21,11 @@ Action = float
 # Choose what you think it is the best data structure
 # for representing states.
 class myState:
-    def __init__(
-        self,
-        transformedScan: array((..., 3)),
-    ) -> None:
+    def __init__(self,transformedScan: array((..., 3)),angles: array(3)) -> None:
         self.transformedScan = transformedScan
-
+        self.angles = angles
 
 State = myState
-
 
 class align_3d_search_problem(search.Problem):
     def __init__(self, scan1: array((..., 3)), scan2: array((..., 3))) -> None:
@@ -50,17 +42,17 @@ class align_3d_search_problem(search.Problem):
         # You may want to change this to something representing
         # your initial state.
 
-        if np.array(scan2).shape[0] > np.array(scan1).shape[0]:
+        if np.array(scan2).shape[0] >= np.array(scan1).shape[0]:
             self.goal = scan2
             self.original = scan1
         else:
             self.goal = scan1
             self.original = scan2
 
-        self.initial = myState(self.original)
+        self.initial = myState(self.original,np.zeros(3))
         self.center = np.average(self.original, axis=0)
 
-        self.i = 1
+        self.i = 0
 
         return
 
@@ -76,13 +68,13 @@ class align_3d_search_problem(search.Problem):
         """
 
         action = []
-
-        if self.i % 3:
-            action.append(("z", -np.radians(90)))
-        elif self.i % 2:
-            action.append(("y", -np.radians(90)))
-        else:
-            action.append(("x", -np.radians(90)))
+        print(state.angles)
+        action.append(("x", np.radians(90)))
+        action.append(("y", np.radians(90)))
+        action.append(("z", np.radians(90)))
+        print(self.i)
+        self.i = self.i + 1
+        
 
         return tuple(action)
 
@@ -98,14 +90,23 @@ class align_3d_search_problem(search.Problem):
         :return: A new state
         :rtype: State
         """
+        x_angle = state.angles[0]
+        y_angle = state.angles[1]
+        z_angle = state.angles[2]
+        
 
         if action[0] == "x":
-            R = eulerAnglesToRotationMatrix([action[1], 0, 0])
+            x_angle = x_angle - action[1]
+            R = eulerAnglesToRotationMatrix([x_angle, 0, 0])
         elif action[0] == "y":
-            R = eulerAnglesToRotationMatrix([0, action[1], 0])
+            y_angle = state.angles[1] - action[1]
+            R = eulerAnglesToRotationMatrix([0, y_angle, 0])
         elif action[0] == "z":
-            R = eulerAnglesToRotationMatrix([0, 0, action[1]])
+            z_angle = state.angles[2] - action[1]
+            R = eulerAnglesToRotationMatrix([0, 0, z_angle])
 
+        #print(state.angles)
+        
         T = np.vstack(
             (
                 np.column_stack(
@@ -135,15 +136,49 @@ class align_3d_search_problem(search.Problem):
         r = T[0:3, 0:3]
         t = T[0:3, 3]
 
-        num_points = np.array(state.transformedScan).shape[0]
+        num_points = np.array(self.original).shape[0]
         state.transformedScan = np.array(
             (
-                np.dot(r, np.array(state.transformedScan).T)
+                np.dot(r, np.array(self.original).T)
                 + np.dot(np.array(t).reshape((3, 1)), np.ones((1, num_points)))
             )
         ).T
+        newState = myState(state.transformedScan, [x_angle, y_angle, z_angle])
+        #
+        #
+        """ plt.ion()
+        plt.show()
 
-        return state
+        ax = plt.axes(projection="3d")
+
+        # Data for three-dimensional scattered points
+        xdata = [row[0] for row in state.transformedScan]
+        ydata = [row[1] for row in state.transformedScan]
+        zdata = [row[2] for row in state.transformedScan]
+        ax.scatter3D(
+            xdata,
+            ydata,
+            zdata,
+            c=zdata,
+            cmap="Reds",
+        )
+
+        xdata = [row[0] for row in self.goal]
+        ydata = [row[1] for row in self.goal]
+        zdata = [row[2] for row in self.goal]
+        ax.scatter3D(
+            xdata,
+            ydata,
+            zdata,
+            c=zdata,
+            cmap="Blues",
+        )
+
+        plt.draw()
+        plt.pause(2) """
+        #
+        #
+        return newState
 
     def goal_test(self, state: State) -> bool:
         """Return True if the state is a goal. The default method compares the
@@ -163,45 +198,8 @@ class align_3d_search_problem(search.Problem):
         error = sum(
             correspondence["dist2"] ** 2 for correspondence in correspondencies.values()
         )
-
-        self.i = self.i + 1
-
-        #
-        #
-        plt.ion()
-        plt.show()
-
-        ax = plt.axes(projection="3d")
-
-        # Data for three-dimensional scattered points
-        xdata = [row[0] for row in state.transformedScan]
-        ydata = [row[1] for row in state.transformedScan]
-        zdata = [row[2] for row in state.transformedScan]
-        ax.scatter3D(
-            xdata,
-            ydata,
-            zdata,
-            c=zdata,
-            cmap="Greens",
-        )
-
-        xdata = [row[0] for row in self.goal]
-        ydata = [row[1] for row in self.goal]
-        zdata = [row[2] for row in self.goal]
-        ax.scatter3D(
-            xdata,
-            ydata,
-            zdata,
-            c=zdata,
-            cmap="Blues",
-        )
-
-        plt.draw()
-        plt.pause(0.000001)
-        #
-        #
-
-        return error < 0.0001  # 1E-16
+        #print(error)
+        return error < 0.01  # 1E-16
 
     def path_cost(self, c, state1: State, action: Action, state2: State) -> float:
         """Return the cost of a solution path that arrives at state2 from
@@ -224,10 +222,8 @@ class align_3d_search_problem(search.Problem):
 
         pass
 
-
 # Calculates Rotation Matrix given euler angles.
 def eulerAnglesToRotationMatrix(theta):
-
     R_x = np.array(
         [
             [1, 0, 0],
@@ -251,11 +247,8 @@ def eulerAnglesToRotationMatrix(theta):
             [0, 0, 1],
         ]
     )
-
     R = np.dot(R_z, np.dot(R_y, R_x))
-
     return R
-
 
 # Converts the euler angles to a rotation matrix to be applied to the clouds
 def angleToMatrix(theta, phi, psi):
@@ -295,10 +288,7 @@ def angleToMatrix(theta, phi, psi):
     return R
 
 
-def compute_alignment(
-    scan1: array((..., 3)),
-    scan2: array((..., 3)),
-) -> Tuple[bool, array, array, int]:
+def compute_alignment(scan1: array((..., 3)),scan2: array((..., 3)),) -> Tuple[bool, array, array, int]:
     """Function that will return the solution.
     You can use any UN-INFORMED SEARCH strategy we study in the
     theoretical classes.
@@ -330,9 +320,17 @@ def compute_alignment(
 
     node = search.breadth_first_tree_search(align_problem)
 
-    R = np.eye(3)
-    T = 0
-    return (True, R, T, node.depth)
+    print((node.state.transformedScan.shape[0]))
+
+    # R = eulerAnglesToRotationMatrix(node.state.angles)
+
+    # T = dist
+
+    reg = registration_iasd(node.state.transformedScan, scan2)
+    correspondences = reg.find_closest_points()
+    r, t = reg.compute_pose(correspondences)
+
+    return (True, r, t, node.depth)
 
 
 if __name__ == "__main__":
