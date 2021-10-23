@@ -127,6 +127,7 @@ class registration:
         :return: 4x4 matrix with the output transformation
         :rtype: Tuple[np.array, np.array]
         """
+        # verbose = True
 
         if verbose:
             print('3D registration verbose:')

@@ -42,9 +42,9 @@ def run(name_test: str) -> None:
     # keeps the id of the first, which should rotate and translate to the pc2
     # updates on the position and orientation of the vtk object is done in the
     # registration
-    _, _ = figure.make_point_cloud(np_point_cloud_1, point_weight=3, point_cloud_color=(0.1, 0.9, 0.1))
-    id_pc1, _ = figure.make_point_cloud(np_point_cloud_1, point_weight=3, point_cloud_color=(0.9, 0.1, 0.1))
-    _, _ = figure.make_point_cloud(np_point_cloud_2, point_weight=3, point_cloud_color=(0.1, 0.1, 0.9))
+    _, _ = figure.make_point_cloud(np_point_cloud_1, point_weight=5, point_cloud_color=(0.1, 0.9, 0.1))
+    id_pc1, _ = figure.make_point_cloud(np_point_cloud_1, point_weight=5, point_cloud_color=(0.9, 0.1, 0.1))
+    _, _ = figure.make_point_cloud(np_point_cloud_2, point_weight=5, point_cloud_color=(0.1, 0.1, 0.9))
     # figure.make_point_cloud(array([[0,0,0],[0,0,0]]), point_weight=5, point_cloud_color=(0,0,0))
     # figure.make_point_cloud(array([[0.1,0,0],[0.1,0,0]]), point_weight=5, point_cloud_color=(1,0,0))#vermelho
     # figure.make_point_cloud(array([[0,0.1,0],[0,0.1,0]]), point_weight=5, point_cloud_color=(1,1,1))#branco
