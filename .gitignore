@@ -2,3 +2,4 @@
 *.ply
 !/tests/*.ply
 __pycache__/
+*.ipynb
