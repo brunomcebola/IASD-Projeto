@@ -1,4 +1,4 @@
-from typing import Tuple, final
+from typing import Tuple
 import numpy as np
 from numpy import array
 import search
@@ -55,13 +55,15 @@ class align_3d_search_problem(search.Problem):
         cloud1_center = np.average(scan1, axis=0)
         cloud2_center = np.average(scan2, axis=0)
 
-        print(f"cloud1 center = {cloud1_center}\ncloud2 center = {cloud2_center}")
-        print(f"scan1: {scan1.shape}, scan2 = {scan2.shape}")
+        # print(f"cloud1 center = {cloud1_center}\ncloud2 center = {cloud2_center}")
+        # print(f"scan1: {scan1.shape}, scan2 = {scan2.shape}")
 
         dist = cloud2_center - cloud1_center
 
         #Move center of scan1 to center of scan2
         scan1 = scan1 + dist
+
+        cloud1_center = np.average(scan1, axis=0)
 
         # cloud1_center = np.average(scan1, axis=0)
         # cloud2_center = np.average(scan2, axis=0)
@@ -156,29 +158,30 @@ class align_3d_search_problem(search.Problem):
         """
         
         # print(f"Im testing if this is goal: rotation of {tuple(map(np.degrees, state))} degrees")
+        # time.sleep(0.5)
         
         # R = angleToMatrix(state.actualState, state.actualState, state.actualState)
         R = eulerAnglesToRotationMatrix(list(state))
 
-        T = np.vstack( (np.column_stack( ( R, 
-            [self.center[0]-R[0][0]*self.center[0] - R[0][1]*self.center[1] - R[0][2]*self.center[2],
-            self.center[1]-R[1][0]*self.center[0] - R[1][1]*self.center[1] - R[1][2]*self.center[2],
-            self.center[2]-R[2][0]*self.center[0] - R[2][1]*self.center[1] - R[2][2]*self.center[2]]) ), 
-            [0,0,0,1] ) )
+        # T = np.vstack( (np.column_stack( ( R, 
+        #     [self.center[0]-R[0][0]*self.center[0] - R[0][1]*self.center[1] - R[0][2]*self.center[2],
+        #     self.center[1]-R[1][0]*self.center[0] - R[1][1]*self.center[1] - R[1][2]*self.center[2],
+        #     self.center[2]-R[2][0]*self.center[0] - R[2][1]*self.center[1] - R[2][2]*self.center[2]]) ), 
+        #     [0,0,0,1] ) )
         
         #here we apply the rotation and translation to the actual points
-        r = T[0:3,0:3]
-        t = T[0:3, 3]
-        # print("R:")
-        # print(r)
-        # print("T:")
-        # print(t)
+        # r = T[0:3,0:3]
+        # t = T[0:3, 3]
+        
+        r = R
+        t = np.array([0,0,0])
 
         num_points, _ = self.scan1.shape
-        transformedScan = (
-                        np.dot(r, self.scan1.T) +
-                        np.dot(t.reshape((3,1)),np.ones((1,num_points)))
-                        ).T
+        transformedScan = ( np.dot(r, self.scan1.T) ).T
+        # transformedScan = (
+        #                 np.dot(r, self.scan1.T) +
+        #                 np.dot(t.reshape((3,1)),np.ones((1,num_points)))
+        #                 ).T
                 
         registration = registration_iasd(transformedScan, self.goal)
         correspondencies = registration.find_closest_points()
@@ -186,8 +189,10 @@ class align_3d_search_problem(search.Problem):
         errors = [correspondence['dist2']**2 for correspondence in correspondencies.values()]
         
         error = np.average(errors)
-        # if error <1E-7:
-        # print(f"Current error is {error}\n")
+        
+        # if error < 0.0001:
+        #     print(T)
+        #     print(f"Current error is {error}\n")
         
         # time.sleep(1)
         
@@ -290,79 +295,72 @@ def compute_alignment(
         solution in the proposes search tree.
     :rtype: Tuple[bool, array, array, int]
     """
-    align_problem = align_3d_search_problem(scan1, scan2)
-    
-    # ret = align_problem.goal_test(scan1)
-    print("search")
-    ret = search.breadth_first_graph_search(align_problem)
-    print("After search") 
-    
+
     cloud1_center = np.average(scan1, axis=0)
     cloud2_center = np.average(scan2, axis=0)
 
-    # print(f"cloud1 center = {cloud1_center}\ncloud2 center = {cloud2_center}")
-    # print(f"scan1: {scan1.shape}, scan2 = {scan2.shape}")
+    align_problem = align_3d_search_problem(scan1, scan2)
 
-    dist = cloud2_center - cloud1_center
-
-    # print(f"rotacao: {tuple(map(np.degrees, ret.state))}")
+    ret = search.breadth_first_graph_search(align_problem)
 
     R = eulerAnglesToRotationMatrix(list(ret.state))
 
-    T = np.vstack( (np.column_stack( ( R, 
-        [cloud1_center[0]-R[0][0]*cloud1_center[0] - R[0][1]*cloud1_center[1] - R[0][2]*cloud1_center[2],
-        cloud1_center[1]-R[1][0]*cloud1_center[0] - R[1][1]*cloud1_center[1] - R[1][2]*cloud1_center[2],
-        cloud1_center[2]-R[2][0]*cloud1_center[0] - R[2][1]*cloud1_center[1] - R[2][2]*cloud1_center[2]]) ), 
-        [0,0,0,1] ) )
+    # T = np.vstack( (np.column_stack( ( R, 
+    #     [cloud2_center[0]-R[0][0]*cloud2_center[0] - R[0][1]*cloud2_center[1] - R[0][2]*cloud2_center[2],
+    #     cloud2_center[1]-R[1][0]*cloud2_center[0] - R[1][1]*cloud2_center[1] - R[1][2]*cloud2_center[2],
+    #     cloud2_center[2]-R[2][0]*cloud2_center[0] - R[2][1]*cloud2_center[1] - R[2][2]*cloud2_center[2]]) ), 
+    #     [0,0,0,1] ) )
 
-    print(f"T from search \n{T}", end="\n---------------\n")
-    
-    r = T[0:3,0:3]
-    t = T[0:3, 3]
+    # print(f"T from search \n{T}", end="\n---------------\n")
+    # dist = cloud2_center - cloud1_center
+
+    # r_1 = T[0:3,0:3]
+    # t_1 = T[0:3, 3] + dist
+
+    # print(T)
     # t=np.zeros(3)
+
+    #Move center of scan1 to center of scan2
+    # scan1 = scan1 + dist
 
     #Transform the scan1 with the r and t matrix found in the search
     num_points, _ = scan1.shape
-    transformedScan1 = (
-                    np.dot(r, scan1.T) +
-                    np.dot(t.reshape((3,1)),np.ones((1,num_points)))
-                    ).T
+    transformedScan1 = ( np.dot(R, scan1.T) ).T
+
+    reg = registration_iasd(transformedScan1, scan2)
+    correspondencies = reg.find_closest_points()
+
+    errors = [correspondence['dist2']**2 for correspondence in correspondencies.values()]
     
-    
+    error = np.average(errors)
+
+    print(f"error is {error}")
+
     #Use the 1st submission algorithm
     reg = registration_iasd(transformedScan1, scan2)
 
-    r1, t1 = reg.get_compute()
+    r_2, t_2 = reg.get_compute()
     
-    R = np.dot(r, r1)
-    T = t + t1
+    R = np.dot( R, r_2  )
+    T = t_2
 
-    # sub1_T = np.vstack( (np.column_stack( ( r, t) ), [0,0,0,1] ) )
+    # num_points, _ = transformedScan1.shape
+    # transformedScan1 = (
+    #                 np.dot(R, transformedScan1.T) +
+    #                 np.dot(T.reshape((3,1)),np.ones((1,num_points)))
+    #                 ).T
 
-    # print(f"T from sub1 \n{sub1_T}", end="\n---------------\n")
+    # reg = registration_iasd(transformedScan1, scan2)
+    # correspondencies = reg.find_closest_points()
+
+    # errors = [correspondence['dist2']**2 for correspondence in correspondencies.values()]
     
-    # finalT = np.dot(sub1_T, T)
+    # error = np.average(errors)
 
-    # r = finalT[0:3,0:3]
-    # t = finalT[0:3, 3]
+    # print(f"error is {error}, in the end")
 
-    num_points, _ = transformedScan1.shape
-    transformedScan1 = (
-                    np.dot(R, transformedScan1.T) +
-                    np.dot(T.reshape((3,1)),np.ones((1,num_points)))
-                    ).T
+    # transformedScan1_center = np.average(transformedScan1, axis=0)
+    # cloud2_center = np.average(scan2, axis=0)
+    # print(f"final transformed center: {transformedScan1_center}|{cloud2_center}")
 
-    # print(f"returned T: \n{finalT}", end="\n---------------\n")
-
-    cloud1_center = np.average(transformedScan1, axis=0)
-    
-    dist = cloud2_center - cloud1_center
-
-    T = T + dist
-    
-
-    # print(f"returned T \n{finalT}", end="\n---------------\n")
     return (True, R, T, ret.depth)
-
-if __name__ == "__main__":
-    print("cringe")
