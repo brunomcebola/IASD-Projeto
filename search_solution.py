@@ -23,7 +23,6 @@ class align_3d_search_problem(search.Problem):
         self,
         scan1: array((..., 3)),
         scan2: array((..., 3)),
-        initialAngle: int,
         maxError: float,
     ) -> None:
         """Module that instantiate your class.
@@ -48,11 +47,11 @@ class align_3d_search_problem(search.Problem):
         # Move center of scan1 to center of scan2
         scan1 = scan1 + dist
 
-        self.initial = (
-            np.radians(initialAngle),
-            np.radians(initialAngle),
-            np.radians(initialAngle),
-        )
+        self.initial = [
+            eulerAnglesToRotationMatrix([0,0,np.pi]),
+            0
+        ]
+
         self.scan1 = scan1
         self.goal = scan2
         self.center = cloud2_center
@@ -101,27 +100,26 @@ class align_3d_search_problem(search.Problem):
         :return: Tuple with all possible actions
         :rtype: Tuple
         """
-
-        self.i = self.i + 1
-
-        if any(abs(s) <= np.radians(3) for s in state):
-            return []
+        if state[-1] <= 7:
+            actions = [           
+                        eulerAnglesToRotationMatrix([np.pi/pow(2, state[-1]),0,0]),
+                        eulerAnglesToRotationMatrix([0,np.pi/pow(2, state[-1]),0]),
+                        eulerAnglesToRotationMatrix([-np.pi/pow(2, state[-1]),0,0]),
+                        eulerAnglesToRotationMatrix([0,-np.pi/pow(2, state[-1]),0]),
+                        
+                             
+                    ]
         else:
-            if self.i > 43:
-                return [
-                    (1.8, 1, 1),
-                    (1, 1.8, 1),
-                    (1, 1, 1.8),
-                ]
-            else:
-                return [
-                    (1.8, 1, 1),
-                    (1, 1.8, 1),
-                    (1, 1, 1.8),
-                    (-1.8, 1, 1),
-                    (1, -1.8, 1),
-                    (1, 1, -1.8),
-                ]
+            # actions = [ eulerAnglesToRotationMatrix([np.pi/pow(2, 6),0,0]),
+            #             eulerAnglesToRotationMatrix([0,np.pi/pow(2, 6),0]),
+
+            #             eulerAnglesToRotationMatrix([-np.pi/pow(2, 6),0,0]),
+            #             eulerAnglesToRotationMatrix([0,-np.pi/pow(2, 6),0])     
+            #         ]
+            actions = []
+
+        return tuple(actions)
+        
 
     def result(self, state: State, action: Action) -> State:
         """Return the state that results from executing the given
@@ -135,19 +133,9 @@ class align_3d_search_problem(search.Problem):
         :return: A new state
         :rtype: State
         """
+        # result = [state[0] / action[0], state[1] / action[1], state[2] / action[2]]
 
-        result = [state[0] / action[0], state[1] / action[1], state[2] / action[2]]
-
-        # result = list(map(lambda a: (a - np.pi * 2) if (a > np.pi) else a, result))
-
-        # if result[0] > np.pi:
-        #     result[0] -= np.pi * 2
-
-        # if result[1] > np.pi:
-        #     result[1] -= np.pi * 2
-
-        # if result[1] > np.pi:
-        #     result[1] -= np.pi * 2
+        result = [np.dot(action, state[0]), state[-1]+1]
 
         return tuple(result)
 
@@ -162,30 +150,11 @@ class align_3d_search_problem(search.Problem):
         :return: returns true or false, whether it represents a node state or not
         :rtype: bool
         """
-        r = eulerAnglesToRotationMatrix(list(state))
+        # print(f"checking {list(map(np.degrees, state[-3:]))}")
+        # time.sleep(0.5)
 
         # here we apply the rotation and translation to the actual points
-        t = np.array([
-            self.center[0]
-            - r[0][0] * self.center[0]
-            - r[0][1] * self.center[1]
-            - r[0][2] * self.center[2],
-            self.center[1]
-            - r[1][0] * self.center[0]
-            - r[1][1] * self.center[1]
-            - r[1][2] * self.center[2],
-            self.center[2]
-            - r[2][0] * self.center[0]
-            - r[2][1] * self.center[1]
-            - r[2][2] * self.center[2],
-        ])
-
-        num_points, _ = self.scan1.shape
-        # transformedScan = ( np.dot(r, self.scan1.T) ).T
-        transformedScan = (
-            np.dot(r, self.scan1.T)
-            + np.dot(t.reshape((3, 1)), np.ones((1, num_points)))
-        ).T
+        transformedScan = ( np.dot(state[0], self.scan1.T) ).T
 
         # registration = registration_iasd(transformedScan, self.goal)
         # correspondencies = registration.find_closest_points()
@@ -238,16 +207,16 @@ def eulerAnglesToRotationMatrix(theta):
         ]
     )
 
-    R_z = np.array(
-        [
-            [cos(theta[2]), -sin(theta[2]), 0],
-            [sin(theta[2]), cos(theta[2]), 0],
-            [0, 0, 1],
-        ]
-    )
+    # R_z = np.array(
+    #     [
+    #         [cos(theta[2]), -sin(theta[2]), 0],
+    #         [sin(theta[2]), cos(theta[2]), 0],
+    #         [0, 0, 1],
+    #     ]
+    # )
 
-    R = np.dot(R_z, np.dot(R_y, R_x))
-
+    # R = np.dot(R_z, np.dot(R_y, R_x))
+    R = np.dot(R_y, R_x)
     return R
 
 
@@ -302,16 +271,15 @@ def compute_alignment(
     #     return (True, r_1, t_1, 0)
 
     # use our search algorithm
-    align_problem = align_3d_search_problem(scan1, scan2, 180, 1e-2)
+    align_problem = align_3d_search_problem(scan1, scan2, 1e-2)
 
-    ret = search.breadth_first_graph_search(align_problem)
+    ret = search.depth_first_tree_search(align_problem)
     if ret == None:
         return (False, np.eye(3), np.zeros(3), 0)
 
-    R = eulerAnglesToRotationMatrix(list(ret.state))
+    R = ret.state[0] 
 
     # Transform the scan1 with the r and t matrix found in the search
-    num_points, _ = scan1.shape
     transformedScan1 = (np.dot(R, scan1.T)).T
 
     # Use the 1st submission algorithm
