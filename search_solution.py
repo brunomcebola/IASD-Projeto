@@ -45,6 +45,7 @@ class align_3d_search_problem(search.Problem):
         # #find the center of each cloud
         cloud1_center = np.average(scan1, axis=0)
         cloud2_center = np.average(scan2, axis=0)
+        print(cloud2_center)
 
         norm1 = ((scan1 - cloud1_center) ** 2).sum(axis=1)
         norm2 = ((scan2 - cloud2_center) ** 2).sum(axis=1)
@@ -70,6 +71,8 @@ class align_3d_search_problem(search.Problem):
         # convert everything to numpy to ensure compatibility
         self.scan1 = np.array(self.scan1)
         self.goal = np.array(self.goal)
+        #self.scan1 = scan1
+        #self.goal = scan2
 
         # Our states will be the rotation matrix and the depth
         # of the search
