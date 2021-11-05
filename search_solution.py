@@ -45,7 +45,7 @@ class align_3d_search_problem(search.Problem):
         # #find the center of each cloud
         cloud1_center = np.average(scan1, axis=0)
         cloud2_center = np.average(scan2, axis=0)
-        print(cloud2_center)
+        print(cloud1_center)
 
         norm1 = ((scan1 - cloud1_center) ** 2).sum(axis=1)
         norm2 = ((scan2 - cloud2_center) ** 2).sum(axis=1)
@@ -71,8 +71,6 @@ class align_3d_search_problem(search.Problem):
         # convert everything to numpy to ensure compatibility
         self.scan1 = np.array(self.scan1)
         self.goal = np.array(self.goal)
-        #self.scan1 = scan1
-        #self.goal = scan2
 
         # Our states will be the rotation matrix and the depth
         # of the search
@@ -124,6 +122,7 @@ class align_3d_search_problem(search.Problem):
                 rotateX(np.pi / pow(2,  1 + state[-1])),
                 rotateY(np.pi / pow(2,  1 + state[-1])),
                 rotateZ(np.pi / pow(2,  1 + state[-1])),
+
                 #negative rotations
                 rotateX(-np.pi / pow(2, 1 + state[-1])),
                 rotateY(-np.pi / pow(2, 1 + state[-1])),
@@ -275,7 +274,7 @@ def compute_alignment(
     :rtype: Tuple[bool, array, array, int]
     """
     # use our search algorithm
-    align_problem = align_3d_search_problem(scan1, scan2, 1.2e-2)
+    align_problem = align_3d_search_problem(scan1, scan2, 2.5e-2)
 
     ret = search.breadth_first_tree_search(align_problem)
     if ret == None:
@@ -286,7 +285,7 @@ def compute_alignment(
     # Transform the scan1 with the r and t matrix found in the search
     transformedScan1 = (np.dot(R, scan1.T)).T
 
-    dist = np.average(scan2, axis=0) - np.average(transformedScan1, axis=0)
+    #dist = np.average(scan2, axis=0) - np.average(transformedScan1, axis=0)
 
     # Use the 1st submission algorithm
     reg = registration_iasd(transformedScan1, scan2)
