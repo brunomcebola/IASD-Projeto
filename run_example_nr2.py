@@ -99,7 +99,15 @@ def main(arguments):
         'PUB5': ('tests/test_nr5'),
         'PUB6': ('tests/test_nr6'),
         'PUB7': ('tests/test_nr7'),
-        'PUB8': ('tests/test_nr8')
+        'PUB8': ('tests/test_nr8'),
+        'PRI1': ('test_pvt1'),
+        'PRI2': ('test_pvt2'),
+        'PRI3': ('test_pvt3'),
+        'PRI4': ('test_pvt4'),
+        'PRI5': ('test_pvt5'),
+        'PRI6': ('test_pvt6'),
+        'PRI7': ('test_pvt7'),
+        'PRI8': ('test_pvt8')
     }
 
     if len(arguments) < 1:
