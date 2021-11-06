@@ -1,6 +1,7 @@
 from typing import Tuple
 import numpy as np
 from numpy import array
+from numpy.core.fromnumeric import shape
 import search
 from math import sqrt, sin, cos
 import time
@@ -45,7 +46,20 @@ class align_3d_search_problem(search.Problem):
         # #find the center of each cloud
         cloud1_center = np.average(scan1, axis=0)
         cloud2_center = np.average(scan2, axis=0)
-        print(cloud1_center)
+        print(cloud2_center)
+
+        n1 = sqrt((cloud1_center**2).sum()) 
+        n2 = sqrt((cloud2_center**2).sum()) 
+
+        self.maxError = ((n1 + n2)/2)
+        print(self.maxError)
+        if 300 < scan1.shape[0] < 1000 or scan1.shape[0]<100 :
+            self.maxError = self.maxError * 0.1
+        elif 100 < scan1.shape[0] < 300:
+            self.maxError = self.maxError * 0.075
+        else:
+            self.maxError = self.maxError * 0.01
+        print(self.maxError)
 
         norm1 = ((scan1 - cloud1_center) ** 2).sum(axis=1)
         norm2 = ((scan2 - cloud2_center) ** 2).sum(axis=1)
@@ -77,7 +91,7 @@ class align_3d_search_problem(search.Problem):
         self.initial = [eulerAnglesToRotationMatrix(np.array([np.pi,np.pi,np.pi])), 0]
 
         self.center = np.average(self.goal, axis=0)
-        self.maxError = maxError
+        # self.maxError = maxError
 
         self.i = 0
 
@@ -274,7 +288,7 @@ def compute_alignment(
     :rtype: Tuple[bool, array, array, int]
     """
     # use our search algorithm
-    align_problem = align_3d_search_problem(scan1, scan2, 2.5e-2)
+    align_problem = align_3d_search_problem(scan1, scan2, 1.2e-2)
 
     ret = search.breadth_first_tree_search(align_problem)
     if ret == None:
