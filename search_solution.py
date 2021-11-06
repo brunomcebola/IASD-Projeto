@@ -53,12 +53,12 @@ class align_3d_search_problem(search.Problem):
 
         self.maxError = ((n1 + n2)/2)
         print(self.maxError)
-        if 300 < scan1.shape[0] < 1000 or scan1.shape[0]<100 :
+        if 300 < scan1.shape[0] < 1000 or scan1.shape[0]<100 or scan1.shape[0] > 2000:
             self.maxError = self.maxError * 0.1
-        elif 100 < scan1.shape[0] < 300:
+        elif 100 < scan1.shape[0] < 300 or scan1.shape[0] > 1500 :
             self.maxError = self.maxError * 0.075
         else:
-            self.maxError = self.maxError * 0.01
+            self.maxError = self.maxError * 0.02
         print(self.maxError)
 
         norm1 = ((scan1 - cloud1_center) ** 2).sum(axis=1)
@@ -88,13 +88,15 @@ class align_3d_search_problem(search.Problem):
 
         # Our states will be the rotation matrix and the depth
         # of the search
-        self.initial = [eulerAnglesToRotationMatrix(np.array([np.pi,np.pi,np.pi])), 0]
+
+        #self.initial = [eulerAnglesToRotationMatrix(np.array([np.pi,np.pi,np.pi])), 0]
+        self.initial = [eulerAnglesToRotationMatrix(np.array([0,0,0])), 0]
 
         self.center = np.average(self.goal, axis=0)
         # self.maxError = maxError
 
         self.i = 0
-
+        
         return
 
     def eval_error(self, testScan) -> float:
