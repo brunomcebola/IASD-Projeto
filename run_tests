@@ -1,0 +1,5 @@
+#!/bin/bash
+for i in "PUB1" "PUB2" "PUB3" "PUB4" "PUB5" "PUB6" "PUB7" "PUB8" "PRI1" "PRI2" "PRI3" "PRI5" "PRI6" "PRI7" "PRI8"
+do
+  python3 run_example_nr2.py $i &
+done

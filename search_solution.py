@@ -20,6 +20,27 @@ Action = tuple
 State = tuple
 
 
+def get_plot(scan1, scan2):
+    from visualization_vtk import point_clouds_visualization
+
+    figure = point_clouds_visualization()
+
+    avg_x, avg_y, avg_z = tuple(np.average(scan2, axis=0))
+
+    figure.set_camera_settings(
+        camera_position=(avg_x, avg_y + 1, avg_z + 0.35),
+        camera_focal_point=(-avg_x, -avg_y, -avg_z),
+    )
+
+    figure.set_windows_name_size(name="IASD21/22: Point Cloud Registration")
+
+    figure.make_point_cloud(scan1, point_weight=5, point_cloud_color=(0.1, 0.9, 0.1))
+    figure.make_point_cloud(scan1, point_weight=5, point_cloud_color=(0.9, 0.1, 0.1))
+    figure.make_point_cloud(scan2, point_weight=5, point_cloud_color=(0.1, 0.1, 0.9))
+
+    figure.render(block=True)
+
+
 class align_3d_search_problem(search.Problem):
     def __init__(
         self,
@@ -43,24 +64,89 @@ class align_3d_search_problem(search.Problem):
         # First we try to filter some points so it's not needed
         # to do all the math for huge matrixes.
 
+        # get_plot(scan1, scan2)
+
+        cloud1_center = np.average(scan1, axis=0)
+        cloud2_center = np.average(scan2, axis=0)
+
+        distCenter = ((cloud2_center - cloud1_center) ** 2).sum()
+
+        # normalize scans
+
+        max_value = abs(scan1.max() if scan1.max() > scan2.max() else scan2.max())
+        min_value = abs(scan1.min() if scan1.min() < scan2.min() else scan2.min())
+
+        max_abs_value = max_value if max_value > min_value else min_value
+
+        # scan1_normalized = scan1 / abs(max_abs_value)
+        # scan2_normalized = scan2 / abs(max_abs_value)
+
+        scan1_normalized = scan1 / (max_abs_value)
+        scan2_normalized = scan2 / (max_abs_value)
+
+        # get_plot(scan1_normalized, scan2_normalized)
+
+        cloud1_center_normalized = np.average(scan1_normalized, axis=0)
+        cloud2_center_normalized = np.average(scan2_normalized, axis=0)
+
+        distCenter_normalized = (
+            (cloud2_center_normalized - cloud1_center_normalized) ** 2
+        ).sum()
+
+        max_value_normalized = abs(
+            scan1_normalized.max()
+            if scan1_normalized.max() > scan2_normalized.max()
+            else scan2_normalized.max()
+        )
+        min_value_normalized = abs(
+            scan1_normalized.min()
+            if scan1_normalized.min() < scan2_normalized.min()
+            else scan2_normalized.min()
+        )
+
+        max_abs_value_normalized = (
+            max_value_normalized
+            if max_value_normalized > min_value_normalized
+            else min_value_normalized
+        )
+
+        print(distCenter_normalized < distCenter)
+
+        print("inicial")
+        print(distCenter)
+        print(max_abs_value)
+        print("normalizado")
+        print(distCenter_normalized)
+        print(max_abs_value_normalized)
+
+        if distCenter_normalized < distCenter / 2:
+            scan1 = scan1_normalized
+            scan2 = scan2_normalized
+
         # #find the center of each cloud
         cloud1_center = np.average(scan1, axis=0)
         cloud2_center = np.average(scan2, axis=0)
-        print(cloud2_center)
 
-        n1 = sqrt((cloud1_center**2).sum()) 
-        n2 = sqrt((cloud2_center**2).sum()) 
+        # TODO: check how to set error threshold
+        n1 = sqrt((cloud1_center ** 2).sum())
+        n2 = sqrt((cloud2_center ** 2).sum())
 
-        self.maxError = ((n1 + n2)/2)
-        print(self.maxError)
-        if 300 < scan1.shape[0] < 1000 or scan1.shape[0]<100 or scan1.shape[0] > 2000:
+        self.maxError = (n1 + n2) / 2
+        if 300 < scan1.shape[0] < 1000 or scan1.shape[0] < 100 or scan1.shape[0] > 2000:
             self.maxError = self.maxError * 0.1
-        elif 100 < scan1.shape[0] < 300 or scan1.shape[0] > 1500 :
+        elif 100 < scan1.shape[0] < 300 or scan1.shape[0] > 1500:
             self.maxError = self.maxError * 0.075
         else:
             self.maxError = self.maxError * 0.02
-        print(self.maxError)
 
+        self.maxError = maxError
+
+        # cloud2dists = ((scan2 - cloud2_center) ** 2).sum(axis=1)
+        # self.maxError = cloud2dists.max() / 200
+
+        # print(self.maxError)
+
+        # get the k points closest to the center of each scan
         norm1 = ((scan1 - cloud1_center) ** 2).sum(axis=1)
         norm2 = ((scan2 - cloud2_center) ** 2).sum(axis=1)
 
@@ -70,7 +156,6 @@ class align_3d_search_problem(search.Problem):
         # number of points to fetch from each scan
         k = scan1.shape[0] // 10
 
-        # get the k points closest to the center of each scan
         sorted_norm1 = np.sort(norm1)
         sorted_norm2 = np.sort(norm2)
 
@@ -86,23 +171,15 @@ class align_3d_search_problem(search.Problem):
         self.scan1 = np.array(self.scan1)
         self.goal = np.array(self.goal)
 
-        # Our states will be the rotation matrix and the depth
-        # of the search
-
-        #self.initial = [eulerAnglesToRotationMatrix(np.array([np.pi,np.pi,np.pi])), 0]
-        self.initial = [eulerAnglesToRotationMatrix(np.array([0,0,0])), 0]
-
+        self.initial = ((-np.pi, np.pi), (-np.pi, np.pi), (-np.pi, np.pi))
         self.center = np.average(self.goal, axis=0)
-        # self.maxError = maxError
 
-        self.i = 0
-        
         return
 
     def eval_error(self, testScan) -> float:
-        #Same as find_closests_points from previous submission
-        #but the return is de average of the distances instead of the
-        #correspondencies
+        # Same as find_closests_points from previous submission
+        # but the return is de average of the distances instead of the
+        # correspondencies
 
         testScan_center = np.average(testScan, axis=0)
         t = self.center - testScan_center
@@ -132,22 +209,9 @@ class align_3d_search_problem(search.Problem):
         # higher than 7 and wanted to try something
         # behond this point
 
-        if state[-1] <= 7:
-            actions = [
-                #positive rotations
-                rotateX(np.pi / pow(2,  1 + state[-1])),
-                rotateY(np.pi / pow(2,  1 + state[-1])),
-                rotateZ(np.pi / pow(2,  1 + state[-1])),
+        actions = (1, 2, 3, 4, 5, 6)
 
-                #negative rotations
-                rotateX(-np.pi / pow(2, 1 + state[-1])),
-                rotateY(-np.pi / pow(2, 1 + state[-1])),
-                rotateZ(-np.pi / pow(2, 1 + state[-1])),
-            ]
-        else:
-            actions = []
-
-        return tuple(actions)
+        return actions
 
     def result(self, state: State, action: Action) -> State:
         """Return the state that results from executing the given
@@ -164,9 +228,32 @@ class align_3d_search_problem(search.Problem):
         # the result is the multiplication of the old state matrix
         # and the new rotation matrix, this way we search for more
         # angles in the search
-        result = [np.dot(state[0], action.T).T, state[-1] + 1]
 
-        return tuple(result)
+        if action == 1:
+            x_avg = (state[0][0] + state[0][1]) / 2
+            result = ((state[0][0], x_avg), state[1], state[2])
+
+        elif action == 2:
+            x_avg = (state[0][0] + state[0][1]) / 2
+            result = ((x_avg, state[0][1]), state[1], state[2])
+
+        elif action == 3:
+            y_avg = (state[1][0] + state[1][1]) / 2
+            result = (state[0], (y_avg, state[1][1]), state[2])
+
+        elif action == 4:
+            y_avg = (state[1][0] + state[1][1]) / 2
+            result = (state[0], (state[1][0], y_avg), state[2])
+
+        elif action == 5:
+            z_avg = (state[2][0] + state[2][1]) / 2
+            result = (state[0], state[1], (z_avg, state[2][1]))
+
+        elif action == 6:
+            z_avg = (state[2][0] + state[2][1]) / 2
+            result = (state[0], state[1], (state[2][0], z_avg))
+
+        return result
 
     def goal_test(self, state: State) -> bool:
         """Return True if the state is a goal. The default method compares the
@@ -181,7 +268,14 @@ class align_3d_search_problem(search.Problem):
         """
 
         # here we apply the rotation and translation to the "filtered points"
-        transformedScan = np.dot(state[0], self.scan1.T).T
+        rotation_matrix = eulerAnglesToRotationMatrix(
+            [np.average(list(state_el)) for state_el in state]
+        )
+
+        transformedScan = np.dot(
+            rotation_matrix,
+            self.scan1.T,
+        ).T
 
         return self.eval_error(transformedScan) < self.maxError
 
@@ -208,7 +302,8 @@ class align_3d_search_problem(search.Problem):
 
         pass
 
-# Calculates the Rotation Matrix for the x axis 
+
+# Calculates the Rotation Matrix for the x axis
 def rotateX(theta):
     return np.array(
         [
@@ -217,6 +312,7 @@ def rotateX(theta):
             [0, sin(theta), cos(theta)],
         ]
     )
+
 
 # Calculates the Rotation Matrix for the y axis
 def rotateY(theta):
@@ -228,13 +324,14 @@ def rotateY(theta):
         ]
     )
 
+
 def rotateZ(theta):
     return np.array(
         [
-          [cos(theta), -sin(theta), 0],
-             [sin(theta), cos(theta), 0],
-             [0, 0, 1],
-         ]
+            [cos(theta), -sin(theta), 0],
+            [sin(theta), cos(theta), 0],
+            [0, 0, 1],
+        ]
     )
 
 
@@ -260,10 +357,10 @@ def eulerAnglesToRotationMatrix(theta):
 
     R_z = np.array(
         [
-          [cos(theta[2]), -sin(theta[2]), 0],
-             [sin(theta[2]), cos(theta[2]), 0],
-             [0, 0, 1],
-         ]
+            [cos(theta[2]), -sin(theta[2]), 0],
+            [sin(theta[2]), cos(theta[2]), 0],
+            [0, 0, 1],
+        ]
     )
 
     R = np.dot(R_z, np.dot(R_y, R_x))
@@ -289,26 +386,52 @@ def compute_alignment(
         solution in the proposes search tree.
     :rtype: Tuple[bool, array, array, int]
     """
+
     # use our search algorithm
     align_problem = align_3d_search_problem(scan1, scan2, 1.2e-2)
 
-    ret = search.breadth_first_tree_search(align_problem)
+    ret = search.breadth_first_graph_search(align_problem)
+
     if ret == None:
         return (False, np.eye(3), np.zeros(3), 0)
 
-    R = ret.state[0]
+    R_3 = eulerAnglesToRotationMatrix(
+        [np.average(list(state_el)) for state_el in ret.state]
+    )
 
     # Transform the scan1 with the r and t matrix found in the search
-    transformedScan1 = (np.dot(R, scan1.T)).T
+    transformedScan1 = (np.dot(R_3, scan1.T)).T
 
-    #dist = np.average(scan2, axis=0) - np.average(transformedScan1, axis=0)
+    trasformedTranslation = transformedScan1 + (
+        np.average(scan2, axis=0) - np.average(transformedScan1, axis=0)
+    )
 
-    # Use the 1st submission algorithm
-    reg = registration_iasd(transformedScan1, scan2)
-    r_2, t_2 = reg.get_compute()
+    # get_plot(
+    #     trasformedTranslation,
+    #     scan2,
+    # )
 
-    R = np.dot(r_2, R)
+    reg = registration_iasd(trasformedTranslation, scan2)
+    correspondencies = reg.find_closest_points()
 
-    T = t_2
+    if all(
+        correspondencie["dist2"] < 1e-13
+        for correspondencie in correspondencies.values()
+    ):
+        R = R_3
+        T = np.average(scan2, axis=0) - np.average(transformedScan1, axis=0)
+    else:
+        # Use the 1st submission algorithm
+        reg = registration_iasd(transformedScan1, scan2)
+        r_2, t_2 = reg.get_compute()
 
-    return (True, R, T, ret.depth)
+        R = r_2 @ R_3
+
+        T = t_2
+
+    return (
+        True,
+        R,
+        T,
+        ret.depth,
+    )
