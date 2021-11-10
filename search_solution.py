@@ -57,135 +57,60 @@ class align_3d_search_problem(search.Problem):
         :type scan2: np.array
         """
 
-        # Creates an initial state.
-        # You may want to change this to something representing
-        # your initial state.
-
-        # First we try to filter some points so it's not needed
-        # to do all the math for huge matrixes.
-
-        # get_plot(scan1, scan2)
-
-        cloud1_center = np.average(scan1, axis=0)
-        cloud2_center = np.average(scan2, axis=0)
-
-        distCenter = ((cloud2_center - cloud1_center) ** 2).sum()
-
-        # normalize scans
-
-        max_value = abs(scan1.max() if scan1.max() > scan2.max() else scan2.max())
-        min_value = abs(scan1.min() if scan1.min() < scan2.min() else scan2.min())
-
-        max_abs_value = max_value if max_value > min_value else min_value
-
-        # scan1_normalized = scan1 / abs(max_abs_value)
-        # scan2_normalized = scan2 / abs(max_abs_value)
-
-        scan1_normalized = scan1 / (max_abs_value)
-        scan2_normalized = scan2 / (max_abs_value)
-
-        # get_plot(scan1_normalized, scan2_normalized)
-
-        cloud1_center_normalized = np.average(scan1_normalized, axis=0)
-        cloud2_center_normalized = np.average(scan2_normalized, axis=0)
-
-        distCenter_normalized = (
-            (cloud2_center_normalized - cloud1_center_normalized) ** 2
-        ).sum()
-
-        max_value_normalized = abs(
-            scan1_normalized.max()
-            if scan1_normalized.max() > scan2_normalized.max()
-            else scan2_normalized.max()
-        )
-        min_value_normalized = abs(
-            scan1_normalized.min()
-            if scan1_normalized.min() < scan2_normalized.min()
-            else scan2_normalized.min()
-        )
-
-        max_abs_value_normalized = (
-            max_value_normalized
-            if max_value_normalized > min_value_normalized
-            else min_value_normalized
-        )
-
-        print(distCenter_normalized < distCenter)
-
-        print("inicial")
-        print(distCenter)
-        print(max_abs_value)
-        print("normalizado")
-        print(distCenter_normalized)
-        print(max_abs_value_normalized)
-
-        if distCenter_normalized < distCenter / 2:
-            scan1 = scan1_normalized
-            scan2 = scan2_normalized
-
-        # #find the center of each cloud
-        cloud1_center = np.average(scan1, axis=0)
-        cloud2_center = np.average(scan2, axis=0)
-
-        # TODO: check how to set error threshold
-        n1 = sqrt((cloud1_center ** 2).sum())
-        n2 = sqrt((cloud2_center ** 2).sum())
-
-        self.maxError = (n1 + n2) / 2
-        if 300 < scan1.shape[0] < 1000 or scan1.shape[0] < 100 or scan1.shape[0] > 2000:
-            self.maxError = self.maxError * 0.1
-        elif 100 < scan1.shape[0] < 300 or scan1.shape[0] > 1500:
-            self.maxError = self.maxError * 0.075
-        else:
-            self.maxError = self.maxError * 0.02
-
+        # set max erro
         self.maxError = maxError
 
-        # cloud2dists = ((scan2 - cloud2_center) ** 2).sum(axis=1)
-        # self.maxError = cloud2dists.max() / 200
-
-        # print(self.maxError)
-
-        # get the k points closest to the center of each scan
-        norm1 = ((scan1 - cloud1_center) ** 2).sum(axis=1)
-        norm2 = ((scan2 - cloud2_center) ** 2).sum(axis=1)
-
-        self.scan1 = []
-        self.goal = []
-
-        # number of points to fetch from each scan
-        k = scan1.shape[0] // 10
-
-        sorted_norm1 = np.sort(norm1)
-        sorted_norm2 = np.sort(norm2)
-
-        for id in range(k):
-            # scan1
-            real_min_idx1 = np.where(norm1 == sorted_norm1[id])
-            self.scan1.append(scan1[real_min_idx1[0][0]])
-            # scan2
-            real_min_idx2 = np.where(norm2 == sorted_norm2[id])
-            self.goal.append(scan2[real_min_idx2[0][0]])
-
-        # convert everything to numpy to ensure compatibility
-        self.scan1 = np.array(self.scan1)
-        self.goal = np.array(self.goal)
-
+        #  set intial state
         self.initial = ((-np.pi, np.pi), (-np.pi, np.pi), (-np.pi, np.pi))
-        self.center = np.average(self.goal, axis=0)
+
+        # set initial scan and goal scan
+        self.initial_scan = scan1
+        self.goal_scan = scan2
+
+        self.goal_scan_center = np.average(self.goal_scan, axis=0)
+        initial_scan_center = np.average(self.initial_scan, axis=0)
+
+        distance_to_goal_scan_center = (
+            (self.goal_scan_center - initial_scan_center) ** 2
+        ).sum()
+
+        initial_scan_max = np.max(self.initial_scan)
+        goal_scan_max = np.max(self.initial_scan)
+
+        initial_scan_min = np.min(self.initial_scan)
+        goal_scan_min = np.min(self.initial_scan)
+
+        max_value = max(initial_scan_max, goal_scan_max)
+        min_value = min(initial_scan_min, goal_scan_min)
+
+        max_abs_value = max(abs(max_value), abs(min_value))
+
+        initial_scan_normalized = self.initial_scan / abs(max_abs_value)
+        goal_scan_normalized = self.goal_scan / abs(max_abs_value)
+
+        initial_scan_center_normalized = np.average(initial_scan_normalized, axis=0)
+        goal_scan_center_normalized = np.average(goal_scan_normalized, axis=0)
+
+        distance_to_goal_scan_center_normalized = (
+            (goal_scan_center_normalized - initial_scan_center_normalized) ** 2
+        ).sum()
+
+        if distance_to_goal_scan_center_normalized < distance_to_goal_scan_center / 2:
+            self.initial_scan = initial_scan_normalized
+            self.goal_scan = goal_scan_normalized
 
         return
 
-    def eval_error(self, testScan) -> float:
+    def eval_error(self, test_scan) -> float:
         # Same as find_closests_points from previous submission
         # but the return is de average of the distances instead of the
         # correspondencies
 
-        testScan_center = np.average(testScan, axis=0)
-        t = self.center - testScan_center
-        testScan = testScan + t
+        test_scan_center = np.average(test_scan, axis=0)
+        distance_to_goal_center = self.goal_scan_center - test_scan_center
+        test_scan = test_scan + distance_to_goal_center
 
-        dist_matrix = (self.goal - testScan) ** 2
+        dist_matrix = (self.goal_scan_center - test_scan) ** 2
 
         dist_matrix = (dist_matrix.sum(axis=1)) ** 0.5
 
@@ -257,9 +182,9 @@ class align_3d_search_problem(search.Problem):
 
     def goal_test(self, state: State) -> bool:
         """Return True if the state is a goal. The default method compares the
-        state to self.goal or checks for state in self.goal if it is a
+        state to self.goalScan or checks for state in self.goalScan if it is a
         list, as specified in the constructor. Override this method if
-        checking against a single self.goal is not enough.
+        checking against a single self.goalScan is not enough.
 
         :param state: gets as input the state
         :type state: State
@@ -274,7 +199,7 @@ class align_3d_search_problem(search.Problem):
 
         transformedScan = np.dot(
             rotation_matrix,
-            self.scan1.T,
+            self.initial_scan.T,
         ).T
 
         return self.eval_error(transformedScan) < self.maxError
@@ -300,7 +225,28 @@ class align_3d_search_problem(search.Problem):
 
         # we didnt define a path cost
 
-        pass
+        return 0
+
+    def h(self, node):
+        """Returns the heuristic at a specific node.
+        note: use node.state to access the state
+
+        :param node: node to include the heuristic
+        :return: heuristic value
+        :rtype: float
+        """
+
+        # here we apply the rotation and translation to the "filtered points"
+        rotation_matrix = eulerAnglesToRotationMatrix(
+            [np.average(list(state_el)) for state_el in node.state]
+        )
+
+        transformedScan = np.dot(
+            rotation_matrix,
+            self.initial_scan.T,
+        ).T
+
+        return self.eval_error(transformedScan) ** 2
 
 
 # Calculates the Rotation Matrix for the x axis
@@ -390,7 +336,7 @@ def compute_alignment(
     # use our search algorithm
     align_problem = align_3d_search_problem(scan1, scan2, 1.2e-2)
 
-    ret = search.breadth_first_graph_search(align_problem)
+    ret = search.astar_search(align_problem)
 
     if ret == None:
         return (False, np.eye(3), np.zeros(3), 0)
