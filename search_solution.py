@@ -105,14 +105,20 @@ class align_3d_search_problem(search.Problem):
         # Same as find_closests_points from previous submission
         # but the return is de average of the distances instead of the
         # correspondencies
+        dist_matrix = test_scan
+        for (index, element) in enumerate(test_scan):
 
-        test_scan_center = np.average(test_scan, axis=0)
-        distance_to_goal_center = self.goal_scan_center - test_scan_center
-        test_scan = test_scan + distance_to_goal_center
+            #compute the distance of each point of scan2 to to the current element of scan1
+            norma = (self.goal_scan - element)**2
+            norma = norma.sum(axis=1)
 
-        dist_matrix = (self.goal_scan_center - test_scan) ** 2
+            #find where the min distance is
+            min_idx = np.argmin(norma)
+            
+            norma = sqrt(norma[min_idx])
 
-        dist_matrix = (dist_matrix.sum(axis=1)) ** 0.5
+            #and save the actual distance
+            dist_matrix[index] = norma
 
         return np.average(dist_matrix)
 
@@ -235,18 +241,18 @@ class align_3d_search_problem(search.Problem):
         :return: heuristic value
         :rtype: float
         """
-
-        # here we apply the rotation and translation to the "filtered points"
+        
+        
         rotation_matrix = eulerAnglesToRotationMatrix(
             [np.average(list(state_el)) for state_el in node.state]
         )
-
         transformedScan = np.dot(
             rotation_matrix,
             self.initial_scan.T,
         ).T
 
-        return self.eval_error(transformedScan) ** 2
+        return node.depth
+        # return self.eval_error(transformedScan) ** 2
 
 
 # Calculates the Rotation Matrix for the x axis
