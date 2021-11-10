@@ -95,9 +95,9 @@ class align_3d_search_problem(search.Problem):
             (goal_scan_center_normalized - initial_scan_center_normalized) ** 2
         ).sum()
 
-        if distance_to_goal_scan_center_normalized < distance_to_goal_scan_center / 2:
-            self.initial_scan = initial_scan_normalized
-            self.goal_scan = goal_scan_normalized
+        #if distance_to_goal_scan_center_normalized < distance_to_goal_scan_center / 2:
+        self.initial_scan = initial_scan_normalized
+        self.goal_scan = goal_scan_normalized
 
         return
 
@@ -340,7 +340,7 @@ def compute_alignment(
     """
 
     # use our search algorithm
-    align_problem = align_3d_search_problem(scan1, scan2, 1.2e-2)
+    align_problem = align_3d_search_problem(scan1, scan2, 10e-2)
 
     ret = search.astar_search(align_problem)
 
