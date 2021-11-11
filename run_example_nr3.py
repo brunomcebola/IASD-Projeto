@@ -9,12 +9,13 @@ from math import sqrt, atan2
 from numpy import array, loadtxt, eye
 from time import time
 
+
 def run(name_test: str) -> None:
 
     # loads the point clouds
     dataset_path = name_test
-    point_cloud_1 = point_cloud_data_iasd(fileName=dataset_path+'_1.ply')
-    point_cloud_2 = point_cloud_data_iasd(fileName=dataset_path+'_2.ply')
+    point_cloud_1 = point_cloud_data_iasd(fileName=dataset_path + "_1.ply")
+    point_cloud_2 = point_cloud_data_iasd(fileName=dataset_path + "_2.ply")
 
     # transform the pointclouds from dictionary style to numpy
     # (for visualization and registration purposes)
@@ -30,13 +31,10 @@ def run(name_test: str) -> None:
 
     # add the camera position and orientation
     # to the environment
-    figure.set_camera_settings(
-        camera_position= (avg_x, avg_y+1, avg_z+.35),
-        camera_focal_point= (-avg_x, -avg_y, -avg_z)
-        )
+    figure.set_camera_settings(camera_position=(avg_x, avg_y + 1, avg_z + 0.35), camera_focal_point=(-avg_x, -avg_y, -avg_z))
 
     # defines the name of the window and size if need (not included)
-    figure.set_windows_name_size(name='IASD21/22: Point Cloud Registration')
+    figure.set_windows_name_size(name="IASD21/22: Point Cloud Registration")
 
     # adds the pointclouds to the environment
     # keeps the id of the first, which should rotate and translate to the pc2
@@ -53,38 +51,38 @@ def run(name_test: str) -> None:
     # creates the registration object
     tic = time()
     valid, r, t, d = compute_alignment(np_point_cloud_1, np_point_cloud_2)
-    elapsed = time()-tic
+    elapsed = time() - tic
 
     if valid:
-        print('INFO: solver found a solution.')
-        print('INFO: ouput information:')
-        print('  -> depth:', d)
-        print('  -> translation: ', t)
-        print('  -> rotation: ', r[0,:])
-        print('               ', r[1,:])
-        print('               ', r[2,:])
-        print('  -> time: ', elapsed)
+        print("INFO: solver found a solution.")
+        print("INFO: ouput information:")
+        print("  -> depth:", d)
+        print("  -> translation: ", t)
+        print("  -> rotation: ", r[0, :])
+        print("               ", r[1, :])
+        print("               ", r[2, :])
+        print("  -> time: ", elapsed)
     else:
-        print('INFO: no solution was found')
-        print('  -> time: ', elapsed)
+        print("INFO: no solution was found")
+        print("  -> time: ", elapsed)
 
     # transform the point cloud given the transformation
     # obtained from the proposes search strategy.
     T = eye(4)
-    T[0:3,0:3], T[0:3, 3] = r, t
-    figure.transform_pointcloud(id_pc1,T)
+    T[0:3, 0:3], T[0:3, 3] = r, t
+    figure.transform_pointcloud(id_pc1, T)
 
     # renders the final result.
-    print(' ')
-    print('INFO: Green and blue points represent the original point-clouds.')
-    print('INFO: Red pints represent the application of the computed (r,t) to the green point-cloud.')
-    print('INFO: As in the previous assignment, the red points must be aligned with the blue ones.')
-    print('INFO: Close the window!')
+    print(" ")
+    print("INFO: Green and blue points represent the original point-clouds.")
+    print("INFO: Red pints represent the application of the computed (r,t) to the green point-cloud.")
+    print("INFO: As in the previous assignment, the red points must be aligned with the blue ones.")
+    print("INFO: Close the window!")
     figure.render(block=True)
 
     return
-    
-    
+
+
 def main(arguments):
 
     # Problems are a dictionary indicating
@@ -92,21 +90,30 @@ def main(arguments):
     # The load_solution function will load th1e data and
     # gt from the respective files.
     PROBLEMS = {
-        'PUB1': ('sub3/test_nr1'),
-        'PUB2': ('sub3/test_nr2'),
-        'PUB3': ('sub3/test_nr3'),
-        'PUB4': ('sub3/test_nr4'),
-        'PUB5': ('sub3/test_nr5'),
-        'PUB6': ('sub3/test_nr6'),
-        'PUB7': ('sub3/test_nr7'),
-        'PUB8': ('sub3/test_nr8')
+        "PUB1": ("sub3/test_nr1"),
+        "PUB2": ("sub3/test_nr2"),
+        "PUB3": ("sub3/test_nr3"),
+        "PUB4": ("sub3/test_nr4"),
+        "PUB5": ("sub3/test_nr5"),
+        "PUB6": ("sub3/test_nr6"),
+        "PUB7": ("sub3/test_nr7"),
+        "PUB8": ("sub3/test_nr8"),
+        "PRI1": ("tests/test_pvt1"),
+        "PRI2": ("tests/test_pvt2"),
+        "PRI3": ("tests/test_pvt3"),
+        "PRI4": ("tests/test_pvt4"),
+        "PRI5": ("tests/test_pvt5"),
+        "PRI6": ("tests/test_pvt6"),
+        "PRI7": ("tests/test_pvt7"),
+        "PRI8": ("tests/test_pvt8"),
     }
     if len(arguments) < 1:
-        test = 'PUB1'
+        test = "PUB1"
     else:
         test = arguments[0]
 
     run(PROBLEMS[test])
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main(argv[1:])
