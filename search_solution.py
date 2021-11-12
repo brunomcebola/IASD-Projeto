@@ -62,9 +62,13 @@ class align_3d_search_problem(search.Problem):
         #  set intial state
         self.initial = ((-np.pi, np.pi), (-np.pi, np.pi), (-np.pi, np.pi))
 
+        scan1_center = np.average(scan1, axis=0)
+
+        scan2_center = np.average(scan2, axis=0)
+
         # set initial scan and goal scan
-        self.initial_scan = scan1
-        self.goal_scan = scan2
+        self.initial_scan = scan1 - scan1_center
+        self.goal_scan = scan2 - scan2_center
 
         initial_scan_max = np.max(self.initial_scan)
         initial_scan_min = np.min(self.initial_scan)
@@ -90,7 +94,7 @@ class align_3d_search_problem(search.Problem):
         initial_scan_distances_to_center_sorted = np.sort(initial_scan_distances_to_center)[::-1]
         goal_scan_distances_to_center_sorted = np.sort(goal_scan_distances_to_center)[::-1]
 
-        k = int(self.goal_scan.shape[0] // 7.5) # set the amount of points to be fetched
+        k = int(self.goal_scan.shape[0] //10) # set the amount of points to be fetched
 
         initial_scan_aux = []
         goal_scan_aux = []
@@ -104,6 +108,7 @@ class align_3d_search_problem(search.Problem):
                 initial_scan_distances_to_center
                 == initial_scan_distances_to_center_sorted[initial_scan_corresponding_id_sorted[0][0]]
             )
+            #initial scan
             initial_scan_aux.append(self.initial_scan[initial_scan_corresponding_id[0][0]])
             initial_scan_distances_to_center_sorted[initial_scan_corresponding_id_sorted] = inf
 
@@ -112,8 +117,9 @@ class align_3d_search_problem(search.Problem):
             goal_scan_aux.append(self.goal_scan[goal_scan_real_id[0][0]])
 
         # convert everything to numpy to ensure compatibility
-        self.initial_scan = np.array(initial_scan_aux)
-        self.goal_scan = np.array(goal_scan_aux)
+        #get_plot(self.initial_scan, self.goal_scan)
+        self.initial_scan = np.array(initial_scan_aux + scan1_center)
+        self.goal_scan = np.array(goal_scan_aux + scan2_center)
 
         return
 
@@ -222,6 +228,14 @@ class align_3d_search_problem(search.Problem):
             self.initial_scan.T,
         ).T
 
+        #reg = registration_iasd(transformedScan, self.goal_scan)
+        #R,T = reg.get_compute()
+        #transformedScan = np.dot(
+        #    R,
+        #    self.initial_scan.T,
+        #).T
+
+
         return self.eval_error(transformedScan) < self.maxError
 
     def path_cost(self, c, state1: State, action: Action, state2: State) -> float:
@@ -263,7 +277,8 @@ class align_3d_search_problem(search.Problem):
         ).T
 
         # return node.depth
-        return node.depth + self.eval_error(transformedScan)
+        return node.depth 
+        return self.eval_error(transformedScan)
 
 # Calculates the Rotation Matrix for the x axis
 def rotateX(theta):
@@ -351,9 +366,9 @@ def compute_alignment(
 
     # use our search algorithm
 
-    align_problem = align_3d_search_problem(scan1, scan2, 20e-2)
+    align_problem = align_3d_search_problem(scan1, scan2, 20.5e-2)
 
-    print(sqrt(((np.average(scan2, axis=0) - np.average(scan1, axis=0)) ** 2).sum()))
+    #print(sqrt(((np.average(scan2, axis=0) - np.average(scan1, axis=0)) ** 2).sum()))
 
     ret = search.astar_search(align_problem)
 
