@@ -62,64 +62,12 @@ class align_3d_search_problem(search.Problem):
         #  set intial state
         self.initial = ((-np.pi, np.pi), (-np.pi, np.pi), (-np.pi, np.pi))
 
-        scan1_center = np.average(scan1, axis=0)
-
-        scan2_center = np.average(scan2, axis=0)
-
-        # set initial scan and goal scan
-        self.initial_scan = scan1 - scan1_center
-        self.goal_scan = scan2 - scan2_center
-
-        initial_scan_max = np.max(self.initial_scan)
-        initial_scan_min = np.min(self.initial_scan)
-
-        goal_scan_max = np.max(self.initial_scan)
-        goal_scan_min = np.min(self.initial_scan)
-
-        scans_max_value = max(initial_scan_max, goal_scan_max)
-        scans_min_value = min(initial_scan_min, goal_scan_min)
-
-        scans_max_abs_value = max(abs(scans_max_value), abs(scans_min_value))
-
-        self.initial_scan = self.initial_scan / abs(scans_max_abs_value)
-        self.goal_scan = self.goal_scan / abs(scans_max_abs_value)
-
-        # get only a % of the points
-        initial_scan_center = np.average(self.initial_scan, axis=0)
-        goal_scan_center = np.average(self.goal_scan, axis=0)
-
-        initial_scan_distances_to_center = ((initial_scan_center - self.initial_scan) ** 2).sum(axis=1)
-        goal_scan_distances_to_center = ((goal_scan_center - self.goal_scan) ** 2).sum(axis=1)
-
-        initial_scan_distances_to_center_sorted = np.sort(initial_scan_distances_to_center)[::-1]
-        goal_scan_distances_to_center_sorted = np.sort(goal_scan_distances_to_center)[::-1]
-
-        k = int(self.goal_scan.shape[0] //10) # set the amount of points to be fetched
-
-        initial_scan_aux = []
-        goal_scan_aux = []
-
-        for id in range(k):
-            # initial scan
-            correspondences_aux = abs(initial_scan_distances_to_center_sorted - goal_scan_distances_to_center_sorted[id])
-
-            initial_scan_corresponding_id_sorted = np.where(correspondences_aux == np.min(correspondences_aux))
-            initial_scan_corresponding_id = np.where(
-                initial_scan_distances_to_center
-                == initial_scan_distances_to_center_sorted[initial_scan_corresponding_id_sorted[0][0]]
-            )
-            #initial scan
-            initial_scan_aux.append(self.initial_scan[initial_scan_corresponding_id[0][0]])
-            initial_scan_distances_to_center_sorted[initial_scan_corresponding_id_sorted] = inf
-
-            # goal scan
-            goal_scan_real_id = np.where(goal_scan_distances_to_center == goal_scan_distances_to_center_sorted[id])
-            goal_scan_aux.append(self.goal_scan[goal_scan_real_id[0][0]])
+        
 
         # convert everything to numpy to ensure compatibility
         #get_plot(self.initial_scan, self.goal_scan)
-        self.initial_scan = np.array(initial_scan_aux + scan1_center)
-        self.goal_scan = np.array(goal_scan_aux + scan2_center)
+        self.initial_scan = np.array(scan1)
+        self.goal_scan = np.array(scan2)
 
         return
 
@@ -127,7 +75,7 @@ class align_3d_search_problem(search.Problem):
         # Same as find_closests_points from previous submission
         # but the return is de average of the distances instead of the
         # correspondencies
-        dist_matrix = test_scan
+        dist_matrix = np.zeros(test_scan.shape[0])
         for (index, element) in enumerate(test_scan):
 
             # compute the distance of each point of scan2 to to the current element of scan1
@@ -228,12 +176,16 @@ class align_3d_search_problem(search.Problem):
             self.initial_scan.T,
         ).T
 
-        #reg = registration_iasd(transformedScan, self.goal_scan)
-        #R,T = reg.get_compute()
-        #transformedScan = np.dot(
-        #    R,
-        #    self.initial_scan.T,
-        #).T
+        if self.eval_error(transformedScan) < self.maxError:
+            reg = registration_iasd(transformedScan, self.goal_scan)
+            R,T = reg.get_compute()
+            transformedScan = np.dot(
+                R,
+                transformedScan.T,
+            ).T
+            #get_plot(transformedScan, self.goal_scan)
+
+            return self.eval_error(transformedScan) < self.maxError*0.5
 
 
         return self.eval_error(transformedScan) < self.maxError
@@ -269,15 +221,17 @@ class align_3d_search_problem(search.Problem):
         :return: heuristic value
         :rtype: float
         """
+        return node.depth
 
-        rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in node.state])
+        if node.action == None:
+            return 1    
+        state = self.result(node.state,node.action)
+        rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in state])
         transformedScan = np.dot(
             rotation_matrix,
             self.initial_scan.T,
         ).T
 
-        # return node.depth
-        return node.depth 
         return self.eval_error(transformedScan)
 
 # Calculates the Rotation Matrix for the x axis
@@ -363,10 +317,71 @@ def compute_alignment(
         solution in the proposes search tree.
     :rtype: Tuple[bool, array, array, int]
     """
+    scan1_center = np.average(scan1, axis=0)
+
+    scan2_center = np.average(scan2, axis=0)
+
+    # set initial scan and goal scan
+    initial_scan = scan1 - scan1_center
+    goal_scan = scan2 - scan2_center
+
+    initial_scan_max = np.max(initial_scan)
+    initial_scan_min = np.min(initial_scan)
+
+    goal_scan_max = np.max(initial_scan)
+    goal_scan_min = np.min(initial_scan)
+
+    scans_max_value = max(initial_scan_max, goal_scan_max)
+    scans_min_value = min(initial_scan_min, goal_scan_min)
+
+    scans_max_abs_value = max(abs(scans_max_value), abs(scans_min_value))
+
+    initial_scan = initial_scan / abs(scans_max_abs_value)
+    goal_scan = goal_scan / abs(scans_max_abs_value)
+
+    # get only a % of the points
+    initial_scan_center = np.average(initial_scan, axis=0)
+    goal_scan_center = np.average(goal_scan, axis=0)
+
+    initial_scan_distances_to_center = ((initial_scan_center - initial_scan) ** 2).sum(axis=1)
+    goal_scan_distances_to_center = ((goal_scan_center - goal_scan) ** 2).sum(axis=1)
+
+    initial_scan_distances_to_center_sorted = np.sort(initial_scan_distances_to_center)[::-1]
+    goal_scan_distances_to_center_sorted = np.sort(goal_scan_distances_to_center)[::-1]
+
+    # set the amount of points to be fetched
+    if goal_scan.shape[0] > 800:
+        k = int(goal_scan.shape[0] // 4) 
+    else:
+        k = int(goal_scan.shape[0] // 5) 
+
+    initial_scan_aux = []
+    goal_scan_aux = []
+
+    for id in range(k):
+        # initial scan
+        correspondences_aux = abs(initial_scan_distances_to_center_sorted - goal_scan_distances_to_center_sorted[id])
+
+        initial_scan_corresponding_id_sorted = np.where(correspondences_aux == np.min(correspondences_aux))
+        initial_scan_corresponding_id = np.where(
+            initial_scan_distances_to_center
+            == initial_scan_distances_to_center_sorted[initial_scan_corresponding_id_sorted[0][0]]
+        )
+        #initial scan
+        initial_scan_aux.append(initial_scan[initial_scan_corresponding_id[0][0]])
+        initial_scan_distances_to_center_sorted[initial_scan_corresponding_id_sorted] = inf
+
+        # goal scan
+        goal_scan_real_id = np.where(goal_scan_distances_to_center == goal_scan_distances_to_center_sorted[id])
+        goal_scan_aux.append(goal_scan[goal_scan_real_id[0][0]])
+
+    initial_scan = initial_scan_aux + scan1_center
+    goal_scan = goal_scan_aux + scan2_center
+
 
     # use our search algorithm
 
-    align_problem = align_3d_search_problem(scan1, scan2, 20.5e-2)
+    align_problem = align_3d_search_problem(initial_scan, goal_scan, 20.5e-2)
 
     #print(sqrt(((np.average(scan2, axis=0) - np.average(scan1, axis=0)) ** 2).sum()))
 
@@ -378,29 +393,18 @@ def compute_alignment(
     R_3 = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in ret.state])
 
     # Transform the scan1 with the r and t matrix found in the search
-    transformedScan1 = (np.dot(R_3, scan1.T)).T
+    transformedScan1 = (np.dot(R_3, initial_scan.T)).T
 
-    trasformedTranslation = transformedScan1 + (np.average(scan2, axis=0) - np.average(transformedScan1, axis=0))
 
-    # get_plot(
-    #     trasformedTranslation,
-    #     scan2,
-    # )
+    # Use the 1st submission algorithm
+    reg = registration_iasd(transformedScan1, goal_scan)
+    r_2, t_2 = reg.get_compute()
 
-    reg = registration_iasd(trasformedTranslation, scan2)
-    correspondencies = reg.find_closest_points()
+    R = r_2 @ R_3
 
-    if all(correspondencie["dist2"] < 1e-13 for correspondencie in correspondencies.values()):
-        R = R_3
-        T = np.average(scan2, axis=0) - np.average(transformedScan1, axis=0)
-    else:
-        # Use the 1st submission algorithm
-        reg = registration_iasd(transformedScan1, scan2)
-        r_2, t_2 = reg.get_compute()
+    T = t_2
 
-        R = r_2 @ R_3
-
-        T = t_2
+    #get_plot((np.dot(R_3, scan1.T)).T, scan2)
 
     return (
         True,
