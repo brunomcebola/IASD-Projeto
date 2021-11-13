@@ -104,11 +104,7 @@ class align_3d_search_problem(search.Problem):
         """
         # Our actions will be rotations in the positive
         # direction and negative direction of the x
-        # and y axis
-
-        # Our groupd decided that the depth should be
-        # higher than 7 and wanted to try something
-        # behond this point
+        # and y axis and z axis
 
         actions = (1, 2, 3, 4, 5, 6)
 
@@ -183,7 +179,6 @@ class align_3d_search_problem(search.Problem):
                 R,
                 transformedScan.T,
             ).T
-            #get_plot(transformedScan, self.goal_scan)
 
             return self.eval_error(transformedScan) < self.maxError*0.5
 
@@ -208,10 +203,8 @@ class align_3d_search_problem(search.Problem):
         :return: [description]
         :rtype: float
         """
-
-        # we didnt define a path cost
-
-        return 0
+        #path cost is basically the depth
+        return c+1
 
     def h(self, node):
         """Returns the heuristic at a specific node.
@@ -221,8 +214,12 @@ class align_3d_search_problem(search.Problem):
         :return: heuristic value
         :rtype: float
         """
+        #Our heuristic is basically the depth, making it similar
+        #to a breadth-first-search
         return node.depth
 
+        #Note when we use this heuristic somehow the program is slower
+        #so we basically got confused in why
         if node.action == None:
             return 1    
         state = self.result(node.state,node.action)
@@ -317,14 +314,17 @@ def compute_alignment(
         solution in the proposes search tree.
     :rtype: Tuple[bool, array, array, int]
     """
+
+    # calculate the centroid of the scans
     scan1_center = np.average(scan1, axis=0)
 
     scan2_center = np.average(scan2, axis=0)
 
-    # set initial scan and goal scan
+    # putting the centroids of the scans on (0,0,0)
     initial_scan = scan1 - scan1_center
     goal_scan = scan2 - scan2_center
 
+    # normalzing the problem
     initial_scan_max = np.max(initial_scan)
     initial_scan_min = np.min(initial_scan)
 
@@ -359,7 +359,6 @@ def compute_alignment(
     goal_scan_aux = []
 
     for id in range(k):
-        # initial scan
         correspondences_aux = abs(initial_scan_distances_to_center_sorted - goal_scan_distances_to_center_sorted[id])
 
         initial_scan_corresponding_id_sorted = np.where(correspondences_aux == np.min(correspondences_aux))
@@ -378,18 +377,16 @@ def compute_alignment(
     initial_scan = initial_scan_aux + scan1_center
     goal_scan = goal_scan_aux + scan2_center
 
-
     # use our search algorithm
-
     align_problem = align_3d_search_problem(initial_scan, goal_scan, 20.5e-2)
-
-    #print(sqrt(((np.average(scan2, axis=0) - np.average(scan1, axis=0)) ** 2).sum()))
 
     ret = search.astar_search(align_problem)
 
+    # if the search doesn't work
     if ret == None:
         return (False, np.eye(3), np.zeros(3), 0)
 
+    
     R_3 = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in ret.state])
 
     # Transform the scan1 with the r and t matrix found in the search
@@ -403,8 +400,6 @@ def compute_alignment(
     R = r_2 @ R_3
 
     T = t_2
-
-    #get_plot((np.dot(R_3, scan1.T)).T, scan2)
 
     return (
         True,
