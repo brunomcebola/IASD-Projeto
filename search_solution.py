@@ -204,6 +204,16 @@ class align_3d_search_problem(search.Problem):
         :rtype: float
         """
         #path cost is basically the depth
+        
+       
+        rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in state2])
+        transformedScan = np.dot(
+            rotation_matrix,
+            self.initial_scan.T,
+        ).T
+
+        return c + self.eval_error(transformedScan)
+
         return c+1
 
     def h(self, node):
@@ -216,14 +226,14 @@ class align_3d_search_problem(search.Problem):
         """
         #Our heuristic is basically the depth, making it similar
         #to a breadth-first-search
-        return node.depth
+        #return node.depth
 
         #Note when we use this heuristic somehow the program is slower
         #so we basically got confused in why
         if node.action == None:
             return 1    
-        state = self.result(node.state,node.action)
-        rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in state])
+        #state = self.result(node.state,node.action)
+        rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in node.state])
         transformedScan = np.dot(
             rotation_matrix,
             self.initial_scan.T,
@@ -378,7 +388,7 @@ def compute_alignment(
     goal_scan = goal_scan_aux + scan2_center
 
     # use our search algorithm
-    align_problem = align_3d_search_problem(initial_scan, goal_scan, 20.5e-2)
+    align_problem = align_3d_search_problem(initial_scan, goal_scan, 19e-2)
 
     ret = search.astar_search(align_problem)
 
