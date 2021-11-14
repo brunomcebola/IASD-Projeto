@@ -19,7 +19,7 @@ Action = tuple
 # for representing states.
 State = tuple
 
-
+#function used to check if our ideas were doing what we thought
 def get_plot(scan1, scan2):
     from visualization_vtk import point_clouds_visualization
 
@@ -59,13 +59,13 @@ class align_3d_search_problem(search.Problem):
         # set max erro
         self.maxError = maxError
 
-        #  set intial state
+        #  set intial state, which is a set of interval of angles,
+        # each interval represents the rotation of x, or y, or z
         self.initial = ((-np.pi, np.pi), (-np.pi, np.pi), (-np.pi, np.pi))
 
         
 
         # convert everything to numpy to ensure compatibility
-        #get_plot(self.initial_scan, self.goal_scan)
         self.initial_scan = np.array(scan1)
         self.goal_scan = np.array(scan2)
 
@@ -106,7 +106,7 @@ class align_3d_search_problem(search.Problem):
         # direction and negative direction of the x
         # and y axis and z axis
 
-        actions = (1, 2, 3, 4, 5, 6)
+        actions = ("x_neg", "x_pos","y_neg", "y_pos","z_neg", "z_pos")
 
         return actions
 
@@ -122,31 +122,30 @@ class align_3d_search_problem(search.Problem):
         :return: A new state
         :rtype: State
         """
-        # the result is the multiplication of the old state matrix
-        # and the new rotation matrix, this way we search for more
-        # angles in the search
+        #gets the new intervals of state following the
+        #specified action
 
-        if action == 1:
+        if action == "x_neg":
             x_avg = (state[0][0] + state[0][1]) / 2
             result = ((state[0][0], x_avg), state[1], state[2])
 
-        elif action == 2:
+        elif action == "x_pos":
             x_avg = (state[0][0] + state[0][1]) / 2
             result = ((x_avg, state[0][1]), state[1], state[2])
 
-        elif action == 3:
+        elif action == "y_neg":
             y_avg = (state[1][0] + state[1][1]) / 2
             result = (state[0], (y_avg, state[1][1]), state[2])
 
-        elif action == 4:
+        elif action == "y_pos":
             y_avg = (state[1][0] + state[1][1]) / 2
             result = (state[0], (state[1][0], y_avg), state[2])
 
-        elif action == 5:
+        elif action == "z_neg":
             z_avg = (state[2][0] + state[2][1]) / 2
             result = (state[0], state[1], (z_avg, state[2][1]))
 
-        elif action == 6:
+        elif action == "z_pos":
             z_avg = (state[2][0] + state[2][1]) / 2
             result = (state[0], state[1], (state[2][0], z_avg))
 
@@ -173,6 +172,8 @@ class align_3d_search_problem(search.Problem):
         ).T
 
         if self.eval_error(transformed_scan) < self.maxError:
+            #if we are "close" to the goal, it tries to apply the
+            #icp method to check if it's already the goal or not
             reg = registration_iasd(transformed_scan, self.goal_scan)
             R,T = reg.get_compute()
             transformed_scan = np.dot(
@@ -202,7 +203,7 @@ class align_3d_search_problem(search.Problem):
         :return: [description]
         :rtype: float
         """
-        #path cost is basically the depth
+        #path cost is basically how close we are to reach the goal
         
        
         rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in state2])
@@ -221,12 +222,8 @@ class align_3d_search_problem(search.Problem):
         :return: heuristic value
         :rtype: float
         """
-        #Our heuristic is basically the depth, making it similar
-        #to a breadth-first-search
-        #return node.depth
-
-        #Note when we use this heuristic somehow the program is slower
-        #so we basically got confused in why
+        #Our heuristic is basically the distance to the goal of the parent
+        #state
         if node.action == None:
             return 1    
         #state = self.result(node.state,node.action)
@@ -238,6 +235,8 @@ class align_3d_search_problem(search.Problem):
 
         return self.eval_error(transformedScan)
 
+#similar to find closests points but removing
+#unecessary information
 def find_max_closest_point(test_scan, goal_scan):
     max_closest = 0
 
@@ -345,10 +344,11 @@ def compute_alignment(
         goal_scan_real_id = np.where(goal_scan_distances_to_center == goal_scan_distances_to_center_sorted[id])
         goal_scan_aux.append(goal_scan[goal_scan_real_id[0][0]])
 
+    #returning the objects to the inicial point
     initial_scan = initial_scan_aux + scan1_center
     goal_scan = goal_scan_aux + scan2_center
 
-    # use our search algorithm
+    # use the search algorithm
     align_problem = align_3d_search_problem(initial_scan, goal_scan, 55e-2)
 
     ret = search.astar_search(align_problem)
