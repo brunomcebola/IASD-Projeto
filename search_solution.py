@@ -260,33 +260,15 @@ def find_max_closest_point(test_scan, goal_scan):
 # Not used in this version of the project
 def eulerAnglesToRotationMatrix(theta):
 
-    R_x = np.array(
-        [
-            [1, 0, 0],
-            [0, cos(theta[0]), -sin(theta[0])],
-            [0, sin(theta[0]), cos(theta[0])],
-        ]
-    )
+    a = theta[2]
+    b = theta[1]
+    g = theta[0]
 
-    R_y = np.array(
-        [
-            [cos(theta[1]), 0, sin(theta[1])],
-            [0, 1, 0],
-            [-sin(theta[1]), 0, cos(theta[1])],
-        ]
-    )
-
-    R_z = np.array(
-        [
-            [cos(theta[2]), -sin(theta[2]), 0],
-            [sin(theta[2]), cos(theta[2]), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    R = np.dot(R_z, np.dot(R_y, R_x))
-    return R
-
+    return [
+    [cos(a)*cos(b),cos(a)*sin(b)*sin(g) - sin(a)*cos(g) ,cos(a)*sin(b)*cos(g) + sin(a)*sin(g)],
+    [sin(a)*cos(b),sin(a)*sin(b)*sin(g) + cos(a)*cos(g) ,sin(a)*sin(b)*cos(g) - cos(a)*sin(g)],
+    [-sin(b),cos(b)*sin(g) ,cos(b)*cos(g)]
+    ]
 
 def compute_alignment(
     scan1: array((..., 3)),
