@@ -167,28 +167,22 @@ class align_3d_search_problem(search.Problem):
         # here we apply the rotation and translation to the "filtered points"
         rotation_matrix = eulerAnglesToRotationMatrix([np.average(list(state_el)) for state_el in state])
 
-        transformedScan = np.dot(
+        transformed_scan = np.dot(
             rotation_matrix,
             self.initial_scan.T,
         ).T
 
-        if self.eval_error(transformedScan) < self.maxError:
-            reg = registration_iasd(transformedScan, self.goal_scan)
+        if self.eval_error(transformed_scan) < self.maxError:
+            reg = registration_iasd(transformed_scan, self.goal_scan)
             R,T = reg.get_compute()
-            transformedScan = np.dot(
+            transformed_scan = np.dot(
                 R,
-                transformedScan.T,
+                transformed_scan.T,
             ).T
-            
-            reg = registration_iasd(transformedScan, self.goal_scan)
-            correspondencies = reg.find_closest_points()
 
-            return all(correspondencie["dist2"] < self.maxError*0.3 for correspondencie in correspondencies.values())
-
-            return self.eval_error(transformedScan) < self.maxError*0.15
-
-
-        return self.eval_error(transformedScan) < self.maxError
+            return find_max_closest_point(transformed_scan, self.goal_scan) < self.maxError*0.3
+        
+        return False
 
     def path_cost(self, c, state1: State, action: Action, state2: State) -> float:
         """Return the cost of a solution path that arrives at state2 from
@@ -219,8 +213,6 @@ class align_3d_search_problem(search.Problem):
 
         return c + self.eval_error(transformedScan)
 
-        return c+1
-
     def h(self, node):
         """Returns the heuristic at a specific node.
         note: use node.state to access the state
@@ -246,37 +238,23 @@ class align_3d_search_problem(search.Problem):
 
         return self.eval_error(transformedScan)
 
-# Calculates the Rotation Matrix for the x axis
-def rotateX(theta):
-    return np.array(
-        [
-            [1, 0, 0],
-            [0, cos(theta), -sin(theta)],
-            [0, sin(theta), cos(theta)],
-        ]
-    )
+def find_max_closest_point(test_scan, goal_scan):
+    max_closest = 0
 
+    for (index, element) in enumerate(test_scan):
+        #compute the distance of each point of scan2 to to the current element of scan1
+        norma = (goal_scan - element)**2
+        norma = norma.sum(axis=1)
 
-# Calculates the Rotation Matrix for the y axis
-def rotateY(theta):
-    return np.array(
-        [
-            [cos(theta), 0, sin(theta)],
-            [0, 1, 0],
-            [-sin(theta), 0, cos(theta)],
-        ]
-    )
+        #find where the min distance is
+        min_idx = np.argmin(norma)
+        
+        norma = sqrt(norma[min_idx])
 
+        if(norma > max_closest):
+            max_closest = norma
 
-def rotateZ(theta):
-    return np.array(
-        [
-            [cos(theta), -sin(theta), 0],
-            [sin(theta), cos(theta), 0],
-            [0, 0, 1],
-        ]
-    )
-
+    return max_closest
 
 # Calculates Rotation Matrix given euler angles.
 # Not used in this version of the project
@@ -332,7 +310,6 @@ def compute_alignment(
 
     # calculate the centroid of the scans
     scan1_center = np.average(scan1, axis=0)
-
     scan2_center = np.average(scan2, axis=0)
 
     # putting the centroids of the scans on (0,0,0)
@@ -355,11 +332,8 @@ def compute_alignment(
     goal_scan = goal_scan / abs(scans_max_abs_value)
 
     # get only a % of the points
-    initial_scan_center = np.average(initial_scan, axis=0)
-    goal_scan_center = np.average(goal_scan, axis=0)
-
-    initial_scan_distances_to_center = ((initial_scan_center - initial_scan) ** 2).sum(axis=1)
-    goal_scan_distances_to_center = ((goal_scan_center - goal_scan) ** 2).sum(axis=1)
+    initial_scan_distances_to_center = (initial_scan ** 2).sum(axis=1)
+    goal_scan_distances_to_center = (goal_scan ** 2).sum(axis=1)
 
     initial_scan_distances_to_center_sorted = np.sort(initial_scan_distances_to_center)[::-1]
     goal_scan_distances_to_center_sorted = np.sort(goal_scan_distances_to_center)[::-1]
@@ -406,7 +380,6 @@ def compute_alignment(
 
     # Transform the scan1 with the r and t matrix found in the search
     transformedScan1 = (np.dot(R_3, initial_scan.T)).T
-
 
     # Use the 1st submission algorithm
     reg = registration_iasd(transformedScan1, goal_scan)
