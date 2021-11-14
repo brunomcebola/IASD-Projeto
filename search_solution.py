@@ -179,8 +179,13 @@ class align_3d_search_problem(search.Problem):
                 R,
                 transformedScan.T,
             ).T
+            
+            reg = registration_iasd(transformedScan, self.goal_scan)
+            correspondencies = reg.find_closest_points()
 
-            return self.eval_error(transformedScan) < self.maxError*0.5
+            return all(correspondencie["dist2"] < self.maxError*0.3 for correspondencie in correspondencies.values())
+
+            return self.eval_error(transformedScan) < self.maxError*0.15
 
 
         return self.eval_error(transformedScan) < self.maxError
@@ -361,7 +366,7 @@ def compute_alignment(
 
     # set the amount of points to be fetched
     if goal_scan.shape[0] > 800:
-        k = int(goal_scan.shape[0] // 4) 
+        k = int(goal_scan.shape[0] // 10) 
     else:
         k = int(goal_scan.shape[0] // 5) 
 
@@ -388,7 +393,7 @@ def compute_alignment(
     goal_scan = goal_scan_aux + scan2_center
 
     # use our search algorithm
-    align_problem = align_3d_search_problem(initial_scan, goal_scan, 19e-2)
+    align_problem = align_3d_search_problem(initial_scan, goal_scan, 55e-2)
 
     ret = search.astar_search(align_problem)
 
